@@ -30,7 +30,9 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--body);-webkit-font-smoothing:antialiased}
 .wrap{max-width:1260px;margin:0 auto;padding:28px 20px 60px}
 header.mast{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px}
-h1{font:700 clamp(28px,4vw,40px)/1.05 var(--display);letter-spacing:-.02em;margin:0}
+h1{font:700 clamp(24px,6vw,40px)/1.08 var(--display);letter-spacing:-.02em;margin:0;overflow-wrap:anywhere}
+header.mast>div{min-width:0;max-width:100%}
+.lede{overflow-wrap:break-word}
 .lede{color:var(--muted);margin:6px 0 0;max-width:62ch}
 .grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:24px;align-items:start}
 @media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}}
@@ -148,6 +150,21 @@ button:hover{border-color:var(--muted)}
         <option value="new">New or pre-launch</option>
         <option value="growing" selected>Growing</option>
         <option value="established">Established</option>
+      </select></div>
+  </div>
+  <div class="two">
+    <div><label for="reach">Where you serve customers</label>
+      <select id="reach" name="reach">
+        <option value="local">One city or area</option>
+        <option value="national" selected>Across the country</option>
+        <option value="online">Online, anywhere</option>
+      </select></div>
+    <div><label for="pos">Positioning</label>
+      <select id="pos" name="pos">
+        <option value="value">Value / affordable</option>
+        <option value="mid" selected>Mid-market</option>
+        <option value="premium">Premium</option>
+        <option value="luxury">Luxury / exclusive</option>
       </select></div>
   </div>
   <label for="products">Products or services</label>
@@ -283,8 +300,12 @@ const KB=[
 ["Marketing Research","Exploratory research","la,br,ex","*","Validate target and message with quick interviews before scaling."],
 ["Marketing Research","A/B testing","sl,ld,ac","*","Test one variable; wait for significance before deciding."],
 ["Marketing Research","Conjoint and pricing research","la,sl","*","Measure willingness to pay before launch."],
-["Luxury Management","Anti-laws of marketing","br","*","For luxury: never discount, control distribution, communicate the dream."],
-["Luxury Management","Rarity management","br","*","Manage scarcity through limited editions and selective channels."],
+["Luxury Management","Anti-laws of marketing","*","*","Never discount, control distribution, and communicate the dream rather than the product."],
+["Luxury Management","Rarity management","*","*","Create scarcity through limited commissions, waiting lists and selective channels."],
+["Luxury Management","Luxury vs premium vs masstige","*","*","Luxury doesn't justify its price with comparison; premium does. Don't compare yourself to cheaper options."],
+["Luxury Management","Dream value","*","*","Communicate to people who won't buy yet; their admiration is part of what buyers pay for."],
+["Luxury Management","Heritage and brand codes","*","*","Build signature, recognisable codes (sound, visual, ritual) and a founder story."],
+["Luxury Management","Purchase ritual and clienteling","*","*","Make the commissioning process itself feel personal and ceremonial."],
 ["Retail Management","Visual merchandising and atmospherics","sl","ret,loc","In-store cues drive conversion."],
 ["Retail Management","Retail media","sl,aw","d2c,ret","Advertise inside marketplaces where purchase happens."],
 ["International Marketing","Entry modes","ex","*","Export, licensing, JV or subsidiary by risk and control."],
@@ -326,6 +347,30 @@ const KB=[
 const GOALS={aw:"Brand awareness",ld:"Lead generation",sl:"Sales",ac:"Customer acquisition",rt:"Customer retention",la:"Product launch",ex:"Market expansion",br:"Brand building",en:"Engagement"};
 const MODELS={d2c:"D2C / e-commerce",b2b:"B2B / industrial",saas:"SaaS / subscription",svc:"Services",ret:"Retail / FMCG",loc:"Local business"};
 const STAGES={new:"New or pre-launch",growing:"Growing",established:"Established"};
+const REACH={local:"Serves one area",national:"Serves nationally",online:"Serves online"};
+const POS={value:"Value",mid:"Mid-market",premium:"Premium",luxury:"Luxury"};
+const POSMUL={
+ value:{search:1.1,meta:1.1,marketplace:1.3,pr:.7,influencer:.9},
+ mid:{},
+ premium:{influencer:1.15,pr:1.3,organic:1.1,video:1.1,marketplace:.8},
+ luxury:{pr:1.8,influencer:1.4,organic:1.6,video:1.2,search:.7,marketplace:0,local:.5,offline:1.1,meta:1}
+};
+const AWARE_MVS={meta:5000,organic:5000,influencer:7000,video:8000};
+const NEW_SKIP=new Set(["Share of voice vs share of market","Continuity, flighting, pulsing","Customer pyramid","RFM segmentation","Key account management","BCG matrix","Brand extensions and extensibility","Loyalty types","Predictive churn and CLV","Diminishing returns (MMM)","Brand audit"]);
+function mvs(c,inp){return (["aw","br","en","la"].includes(inp.goal)&&AWARE_MVS[c]!=null)?AWARE_MVS[c]:CH[c].mvs}
+function actsFor(c,inp){
+  const ch=CH[c];const nw=inp.stage==="new";const lux=inp.pos==="luxury";
+  if(c==="local"){
+    const k=inp.reach==="local"?["Profile views","Calls","Direction requests","Website clicks"]:["Profile views","Website clicks","Enquiries"];
+    if(nw)return{a:[["Profile setup, photos and service listings",40],["First posts and Q&A",25],["Local search ads",35]],k};
+    return{a:ch.a,k};
+  }
+  if(c==="crm"&&nw)return{a:[["Waitlist and launch emails",40],["Enquiry follow-up flow",35],["Referral offer for first customers",25]],k:["Waitlist sign-ups","Enquiry response time","Enquiry to sale rate"]};
+  if(c==="influencer"&&lux)return{a:[["Gifted work to a few selected creators",60],["Rights to reuse creator content",25],["Seeding with niche tastemakers",15]],k:["Reach in target audience","Saves and shares","Profile visits","Enquiries"]};
+  if(c==="organic"&&lux)return{a:[["Behind-the-craft video content",55],["Portfolio posts and showcases",30],["Community replies and DMs",15]],k:["Reach","Saves and shares","Profile visits","Enquiries"]};
+  if(c==="foundation"&&nw)return{a:[["Portfolio or landing page",45],["Samples and launch creative",40],["Analytics and enquiry tracking",15]],k:["Visitors","Enquiry rate","Tracking coverage"]};
+  return{a:ch.a,k:ch.k};
+}
 
 const CH={
  search:{n:"Search ads",mvs:15000,f:"Conversion",c:"#2E6FD8",a:[["High-intent category keywords",55],["Brand keyword defence",15],["Competitor keywords",10],["Search remarketing",20]],k:["CTR","CPC","Conversion rate","CPA","ROAS"]},
@@ -381,13 +426,13 @@ EXCL.forEach(k=>exBox.insertAdjacentHTML("beforeend",`<input type="checkbox" nam
 function read(){
   const f=$("#f"),g=n=>f.elements[n]?.value?.trim()??"";
   return {name:g("name"),industry:g("industry"),model:g("model"),stage:g("stage"),products:g("products"),audience:g("audience"),
-    goal:(f.querySelector('input[name="goal"]:checked')||{}).value||"sl",budget:+g("budget")||0,months:+g("months")||3,geo:g("geo"),comp:g("comp"),
+    reach:g("reach")||"national",pos:g("pos")||"mid",goal:(f.querySelector('input[name="goal"]:checked')||{}).value||"sl",budget:+g("budget")||0,months:+g("months")||3,geo:g("geo"),comp:g("comp"),
     aov:+g("aov")||0,margin:+g("margin")||0,orders:+g("orders")||0,target:+g("target")||0,current:g("current"),
     exclude:[...f.querySelectorAll('input[name="ex"]:checked')].map(x=>x.value)};
 }
 function saveDraft(){try{localStorage.setItem("mpb-draft",JSON.stringify(read()))}catch(e){}}
 function loadDraft(){try{const d=JSON.parse(localStorage.getItem("mpb-draft")||"null");if(!d)return;const f=$("#f");
-  ["name","industry","model","stage","products","audience","budget","months","geo","comp","aov","margin","orders","target","current"].forEach(k=>{if(d[k]!==undefined&&d[k]!==0&&d[k]!==""&&f.elements[k])f.elements[k].value=d[k]});
+  ["name","industry","model","stage","reach","pos","products","audience","budget","months","geo","comp","aov","margin","orders","target","current"].forEach(k=>{if(d[k]!==undefined&&d[k]!==0&&d[k]!==""&&f.elements[k])f.elements[k].value=d[k]});
   if(d.goal){const r=$("#g-"+d.goal);if(r)r.checked=true}
   (d.exclude||[]).forEach(k=>{const c=$("#x-"+k);if(c)c.checked=true});}catch(e){}}
 loadDraft();
@@ -400,29 +445,35 @@ function allocate(inp,budget){
   const w={...GW[inp.goal]};
   Object.entries(MADD[inp.model]||{}).forEach(([c,v])=>w[c]=(w[c]||0)+v);
   Object.entries(MMUL[inp.model]||{}).forEach(([c,m])=>{if(w[c]!=null)w[c]*=m});
+  if(inp.reach==="local")w.local=(w.local||0)+6;
+  else{if(w.local!=null)w.local*=.15;if(w.offline!=null)w.offline*=(inp.reach==="online"?.3:1)}
+  Object.entries(POSMUL[inp.pos]||{}).forEach(([c,m])=>{if(w[c]!=null)w[c]*=m});
+  if(monthly<50000&&w.organic!=null)w.organic*=1.4;
+  if(inp.goal==="rt"&&w.crm==null)w.crm=20;
   inp.exclude.forEach(c=>delete w[c]);
   Object.keys(w).forEach(c=>{if(!(w[c]>0))delete w[c]});
   let fP={new:.15,growing:.10,established:.06}[inp.stage],tP=.10;
   if(monthly<30000){tP=.05;fP=Math.min(fP,.10)}
-  const media=1-fP-tP;
-  let list=Object.entries(w).sort((a,b)=>b[1]-a[1]);
+  const media=1-fP-tP,pool=media*monthly;
+  const ranked=Object.entries(w).sort((a,b)=>b[1]-a[1]);
   const maxN=monthly<50000?3:monthly<200000?5:monthly<1000000?7:9;
-  list=list.slice(0,maxN);
-  if(inp.goal==="rt"&&!inp.exclude.includes("crm")&&!list.find(x=>x[0]==="crm"))list.push(["crm",w.crm||20]);
-  const dropped=[];
-  for(let guard=0;guard<20&&list.length>1;guard++){
-    const tot=list.reduce((s,x)=>s+x[1],0);
-    const low=list.map(x=>({c:x[0],m:media*monthly*x[1]/tot})).filter(x=>x.m<CH[x.c].mvs).sort((a,b)=>a.m-b.m)[0];
-    if(!low)break;
-    dropped.push(low.c);list=list.filter(x=>x[0]!==low.c);
+  const fits=set=>{const t=set.reduce((s,x)=>s+x[1],0);return set.every(x=>pool*x[1]/t>=mvs(x[0],inp))};
+  let sel=[];const dropped=[];
+  if(inp.goal==="rt"&&w.crm&&fits([["crm",w.crm]]))sel.push(["crm",w.crm]);
+  for(const cand of ranked){
+    if(sel.length>=maxN)break;
+    if(sel.find(x=>x[0]===cand[0]))continue;
+    if(fits([...sel,cand]))sel.push(cand);
+    else if(dropped.length<4&&ranked.indexOf(cand)<maxN+2)dropped.push(cand[0]);
   }
-  const tot=list.reduce((s,x)=>s+x[1],0)||1;
-  const rows=list.map(([c,v])=>({c,share:media*v/tot}));
+  if(!sel.length){const alt=ranked.find(x=>mvs(x[0],inp)<=pool)||ranked[0];if(alt)sel.push(alt)}
+  const tot=sel.reduce((s,x)=>s+x[1],0)||1;
+  const rows=sel.map(([c,v])=>({c,share:media*v/tot}));
   rows.push({c:"foundation",share:fP},{c:"test",share:tP});
   const floors=rows.map(r=>Math.floor(r.share*100));let rem=100-floors.reduce((a,b)=>a+b,0);
   rows.map((r,i)=>({i,f:r.share*100-floors[i]})).sort((a,b)=>b.f-a.f).forEach(x=>{if(rem>0){floors[x.i]++;rem--}});
   rows.forEach((r,i)=>{r.pct=floors[i];r.amt=r.share*budget;r.mo=r.share*monthly});
-  return {rows,dropped,monthly,fP,tP};
+  return {rows,dropped:dropped.filter(c=>!sel.find(x=>x[0]===c)),monthly,fP,tP};
 }
 
 function economics(inp,budget){
@@ -452,7 +503,9 @@ function phases(inp,budget,rows){
 function checks(inp,al,eco){
   const o=[];
   if(al.monthly<30000)o.push(["warn","At "+inr(al.monthly)+" a month the plan concentrates on few channels. Spreading thin means no channel gets enough data to learn."]);
-  if(al.dropped.length)o.push(["ok","Left out at this budget: "+al.dropped.map(c=>CH[c].n).join(", ")+". Each needs a minimum monthly spend to produce reliable results."]);
+  if(al.dropped.length)o.push(["ok","Left out at this budget: "+al.dropped.map(c=>CH[c].n).join(", ")+". Each needs a minimum monthly spend to produce reliable results, so the next-best channels that fit were used instead."]);
+  if(inp.pos==="luxury")o.push(["ok","Luxury positioning: the plan avoids marketplaces and discount-led tactics and leans on creators, PR and crafted content. Keep prices firm and access selective."]);
+  if(inp.reach!=="local"&&!al.rows.find(r=>r.c==="local"))o.push(["ok","Set up a free Google Business Profile anyway so people searching your name find you; it needs no paid budget."]);
   if(eco){
     if(eco.reqRoas&&eco.reqRoas<eco.beRoas)o.push(["warn","Your revenue target needs a ROAS of "+eco.reqRoas.toFixed(1)+", below your break-even ROAS of "+eco.beRoas.toFixed(1)+". Hitting the target on this budget would lose money on paid media unless repeat purchases make up the gap."]);
     if(eco.reqRoas&&eco.reqRoas>=eco.beRoas*2.5)o.push(["warn","Your target needs a ROAS of "+eco.reqRoas.toFixed(1)+" across all spend. That is ambitious; confirm with a small test before committing the full budget."]);
@@ -466,8 +519,13 @@ function checks(inp,al,eco){
 }
 
 function kbFor(inp){
-  return KB.filter(r=>(r[2]==="*"||r[2].split(",").includes(inp.goal))&&(r[3]==="*"||r[3].split(",").includes(inp.model)))
-   .map(r=>({s:r[0],c:r[1],a:r[4],sc:(r[2]!=="*"?2:0)+(r[3]!=="*"?1:0)})).sort((a,b)=>b.sc-a.sc);
+  const lux=inp.pos==="luxury";
+  return KB.filter(r=>{
+    if(r[0]==="Luxury Management")return lux;
+    if(inp.stage==="new"&&NEW_SKIP.has(r[1]))return false;
+    if(inp.reach!=="local"&&r[1]==="Visual merchandising and atmospherics")return false;
+    return (r[2]==="*"||r[2].split(",").includes(inp.goal))&&(r[3]==="*"||r[3].split(",").includes(inp.model));
+  }).map(r=>({s:r[0],c:r[1],a:r[4],sc:(r[0]==="Luxury Management"?3:0)+(r[2]!=="*"?2:0)+(r[3]!=="*"?1:0)})).sort((a,b)=>b.sc-a.sc);
 }
 
 let state={inp:null,budget:0,al:null,eco:null,ph:null,ai:null,kb:null};
@@ -496,7 +554,7 @@ function render(){
   <section class="panel" id="alloc-sec">
     <h2>Where to invest</h2>
     <div class="total"><span class="big" id="tot">${inrShort(budget)}</span><span class="muted" id="permo">${inr(al.monthly)} a month for ${inp.months} month${inp.months>1?"s":""}</span></div>
-    <div class="chips"><span class="chip">${esc(GOALS[inp.goal])}</span><span class="chip">${esc(MODELS[inp.model])}</span><span class="chip">${esc(STAGES[inp.stage])}</span>${inp.geo?`<span class="chip">${esc(inp.geo)}</span>`:""}</div>
+    <div class="chips"><span class="chip">${esc(GOALS[inp.goal])}</span><span class="chip">${esc(MODELS[inp.model])}</span><span class="chip">${esc(STAGES[inp.stage])}</span><span class="chip">${esc(REACH[inp.reach])}</span><span class="chip">${esc(POS[inp.pos])}</span>${inp.geo?`<span class="chip">${esc(inp.geo)}</span>`:""}</div>
     <div class="rupeebar" id="bar" role="img" aria-label="Budget split by channel"></div>
     <div class="whatif"><label for="wi" style="margin:0;font-weight:500">What if the budget changes?</label><input type="range" id="wi" min="50" max="200" step="5" value="100"><span id="wio" style="min-width:48px;color:var(--ink);font-weight:600">100%</span></div>
     <div class="tablewrap"><table class="alloc"><thead><tr><th>Channel</th><th>Role</th><th class="num">Share</th><th class="num">Total</th><th class="num">Per month</th></tr></thead><tbody id="rows"></tbody></table></div>
@@ -517,8 +575,8 @@ function paintAlloc(){
   const {al,budget,inp}=state;
   $("#tot").textContent=inrShort(budget);$("#permo").textContent=inr(al.monthly)+" a month for "+inp.months+" month"+(inp.months>1?"s":"");
   $("#bar").innerHTML=al.rows.map(r=>`<span title="${esc(CH[r.c].n)} ${r.pct}%" style="flex-grow:${r.share};background:${CH[r.c].c}"></span>`).join("");
-  $("#rows").innerHTML=al.rows.map((r,i)=>{const ch=CH[r.c];return`<tr><td><span class="sw" style="background:${ch.c}"></span><button type="button" class="rowbtn" aria-expanded="false" aria-controls="a${i}" data-i="${i}">${esc(ch.n)}</button>
-   <div class="acts" id="a${i}" hidden>${ch.a.map(a=>`<div><span>${esc(a[0])}</span><span>${inr(r.amt*a[1]/100)}</span></div>`).join("")}<div class="k">Judge on: ${ch.k.join(", ")}</div></div></td>
+  $("#rows").innerHTML=al.rows.map((r,i)=>{const ch=CH[r.c],ak=actsFor(r.c,inp);return`<tr><td><span class="sw" style="background:${ch.c}"></span><button type="button" class="rowbtn" aria-expanded="false" aria-controls="a${i}" data-i="${i}">${esc(ch.n)}</button>
+   <div class="acts" id="a${i}" hidden>${ak.a.map(a=>`<div><span>${esc(a[0])}</span><span>${inr(r.amt*a[1]/100)}</span></div>`).join("")}<div class="k">Judge on: ${ak.k.join(", ")}</div></div></td>
    <td class="small muted">${esc(ch.f)}</td><td class="num">${r.pct}%</td><td class="num">${inr(r.amt)}</td><td class="num">${inr(r.mo)}</td></tr>`}).join("");
   document.querySelectorAll(".rowbtn").forEach(b=>b.addEventListener("click",()=>{const x=b.getAttribute("aria-expanded")==="true";b.setAttribute("aria-expanded",!x);$("#a"+b.dataset.i).hidden=x}));
 }
@@ -638,10 +696,10 @@ function paintAI(){
 
 function toMarkdown(){
   const {inp,al,eco,ph,ai,budget}=state;const L=[];
-  L.push(`# Marketing plan: ${inp.name}`,``,`${inp.industry} · ${MODELS[inp.model]} · ${STAGES[inp.stage]} · Goal: ${GOALS[inp.goal]}`,`Budget: ${inr(budget)} over ${inp.months} month(s) (${inr(al.monthly)} a month)`,``,`## Budget allocation`,``,`| Channel | Share | Total | Per month |`,`|---|---|---|---|`);
+  L.push(`# Marketing plan: ${inp.name}`,``,`${inp.industry} · ${MODELS[inp.model]} · ${STAGES[inp.stage]} · ${REACH[inp.reach]} · ${POS[inp.pos]} · Goal: ${GOALS[inp.goal]}`,`Budget: ${inr(budget)} over ${inp.months} month(s) (${inr(al.monthly)} a month)`,``,`## Budget allocation`,``,`| Channel | Share | Total | Per month |`,`|---|---|---|---|`);
   al.rows.forEach(r=>L.push(`| ${CH[r.c].n} | ${r.pct}% | ${inr(r.amt)} | ${inr(r.mo)} |`));
   L.push(``,`## Activities by channel`);
-  al.rows.forEach(r=>{L.push(``,`### ${CH[r.c].n} (${inr(r.amt)})`);CH[r.c].a.forEach(a=>L.push(`- ${a[0]}: ${inr(r.amt*a[1]/100)}`));L.push(`- Judge on: ${CH[r.c].k.join(", ")}`)});
+  al.rows.forEach(r=>{const ak=actsFor(r.c,inp);L.push(``,`### ${CH[r.c].n} (${inr(r.amt)})`);ak.a.forEach(a=>L.push(`- ${a[0]}: ${inr(r.amt*a[1]/100)}`));L.push(`- Judge on: ${ak.k.join(", ")}`)});
   if(eco){L.push(``,`## Spending limits`,`- Break-even ROAS: ${eco.beRoas.toFixed(2)}`,`- Contribution per order: ${inr(eco.contrib)}`);if(eco.clv)L.push(`- CLV: ${inr(eco.clv)}`);if(eco.maxCac)L.push(`- Max affordable CAC: ${inr(eco.maxCac)}`);if(eco.reqRoas)L.push(`- ROAS needed for target: ${eco.reqRoas.toFixed(2)}`)}
   L.push(``,`## Roadmap`);ph.forEach(p=>{L.push(``,`### ${p.t} (${p.when}, about ${inr(p.amt)})`);p.items.forEach(t=>L.push(`- ${t}`))});
   L.push(``,`## Checks`);checks(inp,al,eco).forEach(c=>L.push(`- ${c[1]}`));
