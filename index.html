@@ -358,18 +358,33 @@ const POSMUL={
 const AWARE_MVS={meta:5000,organic:5000,influencer:7000,video:8000};
 const NEW_SKIP=new Set(["Share of voice vs share of market","Continuity, flighting, pulsing","Customer pyramid","RFM segmentation","Key account management","BCG matrix","Brand extensions and extensibility","Loyalty types","Predictive churn and CLV","Diminishing returns (MMM)","Brand audit"]);
 function mvs(c,inp){return (["aw","br","en","la"].includes(inp.goal)&&AWARE_MVS[c]!=null)?AWARE_MVS[c]:CH[c].mvs}
+const FAM=g=>["aw","br","en","la"].includes(g)?"aware":g==="ld"?"lead":g==="rt"?"retain":g==="ex"?"expand":"sales";
+const KPI={
+ aware:{search:["Impressions","Branded search volume","CTR"],seo:["Impressions","Organic reach","Mentions in AI answers"],meta:["Reach","Frequency","CPM","Video views","Profile visits"],organic:["Reach","Saves and shares","Profile visits","Follower growth"],influencer:["Reach in target audience","Saves and shares","Profile visits","Branded search"],video:["Views","View rate","Cost per view","Reach"],crm:["List growth","Open rate"],marketplace:["Impressions","Listing views"],linkedin:["Reach in target accounts","Engagement rate","Follower growth"],events:["Visitors reached","Contacts collected"],offline:["Reach","Frequency","Branded search lift"],local:["Profile views","Search appearances"],pr:["Coverage","Share of voice","Branded search"],trade:["Numeric distribution","Shelf visibility"],sales:["Materials created","Sales team usage"]},
+ lead:{search:["Cost per lead","Conversion rate","CTR"],seo:["Organic leads","Conversion rate","Keyword rankings"],meta:["Cost per lead","Lead to qualified rate","CTR"],organic:["Profile visits","Enquiries from DMs"],influencer:["Leads from creator links","Cost per lead"],video:["View-through leads","Cost per view"],linkedin:["Cost per lead","MQL rate","Account engagement"],crm:["Lead to MQL rate","Nurture click rate"],local:["Calls","Enquiries"]},
+ retain:{search:["Branded search conversions","ROAS"],meta:["Repeat purchases from ads","ROAS on existing customers","Frequency"],organic:["Engagement from customers","Community activity"],influencer:["Repeat purchases via codes","Engagement rate"],crm:["Repeat rate","Time between orders","Revenue per recipient","Churn rate"]}
+};
 function actsFor(c,inp){
-  const ch=CH[c];const nw=inp.stage==="new";const lux=inp.pos==="luxury";
+  const ch=CH[c];const nw=inp.stage==="new";const lux=inp.pos==="luxury";const shop=["d2c","ret"].includes(inp.model);
+  let a=ch.a,k=ch.k;
   if(c==="local"){
-    const k=inp.reach==="local"?["Profile views","Calls","Direction requests","Website clicks"]:["Profile views","Website clicks","Enquiries"];
-    if(nw)return{a:[["Profile setup, photos and service listings",40],["First posts and Q&A",25],["Local search ads",35]],k};
-    return{a:ch.a,k};
+    k=inp.reach==="local"?["Profile views","Calls","Direction requests","Website clicks"]:["Profile views","Website clicks","Enquiries"];
+    if(nw)a=[["Profile setup, photos and service listings",40],["First posts and Q&A",25],["Local search ads",35]];
   }
-  if(c==="crm"&&nw)return{a:[["Waitlist and launch emails",40],["Enquiry follow-up flow",35],["Referral offer for first customers",25]],k:["Waitlist sign-ups","Enquiry response time","Enquiry to sale rate"]};
-  if(c==="influencer"&&lux)return{a:[["Gifted work to a few selected creators",60],["Rights to reuse creator content",25],["Seeding with niche tastemakers",15]],k:["Reach in target audience","Saves and shares","Profile visits","Enquiries"]};
-  if(c==="organic"&&lux)return{a:[["Behind-the-craft video content",55],["Portfolio posts and showcases",30],["Community replies and DMs",15]],k:["Reach","Saves and shares","Profile visits","Enquiries"]};
-  if(c==="foundation"&&nw)return{a:[["Portfolio or landing page",45],["Samples and launch creative",40],["Analytics and enquiry tracking",15]],k:["Visitors","Enquiry rate","Tracking coverage"]};
-  return{a:ch.a,k:ch.k};
+  if(c==="meta"){
+    const rt=nw?"Retargeting video viewers and profile visitors":shop?"Retargeting viewers and cart abandoners":"Retargeting site visitors and engaged users";
+    a=[[nw?"Prospecting to target audiences":"Prospecting audiences",nw?55:50],[rt,nw?25:30],["Creative testing",20]];
+  }
+  if(c==="organic")a=nw?[["Short video production",55],["Launch content library",30],["Community replies and DMs",15]]:ch.a;
+  if(c==="search"&&nw)a=[["High-intent category keywords",70],["Competitor and alternative keywords",10],["Search remarketing",20]];
+  if(c==="influencer"&&nw)a=[["Product gifting to relevant creators",55],["Paid posts with one or two selected creators",30],["Rights to reuse creator content",15]];
+  if(c==="crm"&&nw){a=[["Waitlist and launch emails",40],["Enquiry follow-up flow",35],["Referral offer for first customers",25]];k=["Waitlist sign-ups","Enquiry response time","Enquiry to sale rate"]}
+  if(c==="influencer"&&lux){a=[["Gifted work to a few selected creators",60],["Rights to reuse creator content",25],["Seeding with niche tastemakers",15]];k=["Reach in target audience","Saves and shares","Profile visits","Enquiries"]}
+  if(c==="organic"&&lux){a=[["Behind-the-craft video content",55],["Portfolio posts and showcases",30],["Community replies and DMs",15]];k=["Reach","Saves and shares","Profile visits","Enquiries"]}
+  if(c==="foundation"&&nw){a=[["Portfolio or landing page",45],["Samples and launch creative",40],["Analytics and enquiry tracking",15]];k=["Visitors","Enquiry rate","Tracking coverage"]}
+  const g=KPI[FAM(inp.goal)];
+  if(g&&g[c]&&!(c==="local"&&FAM(inp.goal)!=="aware"))k=g[c];
+  return{a,k};
 }
 
 const CH={
@@ -487,16 +502,41 @@ function economics(inp,budget){
   return {m,contrib,beRoas,clv,maxCac,ordersNeeded,spendPerOrder,reqRoas};
 }
 
+const STEPS={
+ aware:{short:["Build a base of your own content before paying to promote any of it.","Start creator collaborations early so their posts run alongside yours.","Boost only posts that earn above-average saves and shares organically.","Track reach, frequency and branded search weekly; this phase is about being noticed, not sales."],
+  p1:["Write the positioning statement and the one point of difference every piece will carry.","Produce a launch content library; set up profiles and a portfolio page.","Seed creators with your product or work."],
+  p2:["Boost the best organic posts; cap frequency to avoid fatigue.","Test two message angles against each other.","Track reach, frequency, saves and branded search."],
+  p3:["Scale the winning angle and creators into more formats.","Add PR or collaborations to widen reach.","Start capturing interest (waitlist, enquiries) to move people toward consideration."]},
+ lead:{short:["Set up lead capture and agree what counts as a qualified lead before spend.","Run high-intent search and lead ads with two or three offers.","Follow up every lead within 24 hours.","Judge on cost per qualified lead, not raw lead count."],
+  p1:["Define the ideal customer and qualification criteria with sales.","Build landing pages, lead magnets and tracking.","Test offers and audiences with small budgets."],
+  p2:["Cut sources with low lead quality even if cost per lead is cheap.","Launch nurture sequences for leads not ready to buy.","Fix the step where most leads stall."],
+  p3:["Scale sources with the best cost per qualified lead.","Add account-based outreach to high-value targets.","Feed closed-deal data back to targeting."]},
+ retain:{short:["Segment customers by recency, frequency and value first.","Set up welcome, repeat-purchase and win-back flows.","Reward repeat buyers rather than discounting to everyone.","Track repeat rate and time between orders."],
+  p1:["Segment customers (RFM) and map the post-purchase journey.","Set up core CRM flows and collect feedback."],
+  p2:["Launch a loyalty or referral offer for top customers.","Win back lapsed customers with a personal message, not a blanket discount.","Fix the top complaint driving churn."],
+  p3:["Scale flows that lift repeat rate; add personalisation.","Turn loyal customers into advocates through reviews and referrals."]},
+ expand:{short:["Validate demand in the new market with small tests before full rollout.","Secure distribution or partners before heavy advertising.","Adapt the message to local context.","Compare results with your home market."],
+  p1:["Research the new market and pick one entry segment.","Line up distribution, partners and local proof.","Run small demand tests."],
+  p2:["Double down on the segment and channel with the best early response.","Localise creative and offers.","Fix availability gaps before adding spend."],
+  p3:["Scale into adjacent segments or cities.","Build local PR and partnerships.","Set targets per market and review monthly."]}
+};
 function phases(inp,budget,rows){
   const M=inp.months;const top=rows.filter(r=>!["foundation","test"].includes(r.c)).slice(0,2).map(r=>CH[r.c].n);
-  const gname=GOALS[inp.goal].toLowerCase();
-  if(M<3)return[{t:"Launch, learn and adjust",when:M===1?"Month 1":"Months 1–"+M,amt:budget,items:["Set up tracking, landing pages and creative before spend goes live.","Run "+top.join(" and ")+" with 2–3 creative and audience variants each.","Review weekly; move money toward the variant closest to your "+gname+" target.","A short period leaves little learning time, so treat results as directional."]}];
+  const fam=FAM(inp.goal),st=STEPS[fam];
+  if(M<3){
+    const items=st?st.short:["Set up tracking, landing pages and creative before spend goes live.","Run "+top.join(" and ")+" with two or three creative and audience variants each.","Review weekly; move money toward the variant closest to your "+GOALS[inp.goal].toLowerCase()+" target.","A short period leaves little learning time, so treat results as directional."];
+    return[{t:"Launch, learn and adjust",when:M===1?"Month 1":"Months 1–"+M,amt:budget,items:[...items,"Main channels: "+top.join(" and ")+"."]}];
+  }
   const p1=Math.max(1,Math.round(M*.25)),p3=Math.max(1,Math.round(M*.35)),p2=Math.max(1,M-p1-p3);
   const r=(a,b)=>a===b?"Month "+a:"Months "+a+"–"+b;
+  const def={p1:["Fix tracking: every channel reports to one set of conversion events.","Build landing pages and creative; write the positioning statement first.","Test "+top.join(" and ")+" with small budgets across audiences and messages.","Spend most of the test reserve here."],
+   p2:["Cut ad sets and creatives below break-even; keep the top third.","Launch retargeting and nurture flows for people who engaged but didn't act.","Fix the stage with the biggest funnel drop before adding traffic."],
+   p3:["Raise budget on winning channels in 20–30% steps and watch for rising CPA (diminishing returns).","Expand winning creative into new formats and audiences.","Shift retained budget into retention and referral to lift lifetime value."]};
+  const S=st||def;
   return[
-   {t:"Foundation and testing",when:r(1,p1),amt:budget*.25,items:["Fix tracking: every channel reports to one set of conversion events.","Build landing pages and creative; write the positioning statement first.","Test "+top.join(" and ")+" with small budgets across audiences and messages.","Spend most of the test reserve here."]},
-   {t:"Optimise",when:r(p1+1,p1+p2),amt:budget*.35,items:["Cut ad sets and creatives below break-even; keep the top third.","Launch retargeting and nurture flows for people who engaged but didn't act.","Fix the stage with the biggest funnel drop before adding traffic."]},
-   {t:"Scale what works",when:r(p1+p2+1,M),amt:budget*.40,items:["Raise budget on winning channels in 20–30% steps and watch for rising CPA (diminishing returns).","Expand winning creative into new formats and audiences.","Shift retained budget into retention and referral to lift lifetime value."]}
+   {t:"Foundation and testing",when:r(1,p1),amt:budget*.25,items:S.p1},
+   {t:"Optimise",when:r(p1+1,p1+p2),amt:budget*.35,items:S.p2},
+   {t:"Scale what works",when:r(p1+p2+1,M),amt:budget*.40,items:S.p3}
   ];
 }
 
