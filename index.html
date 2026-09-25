@@ -116,6 +116,21 @@ button:hover{border-color:var(--muted)}
 .mini{width:100%;border-collapse:collapse;font-size:13.5px}
 .mini td{padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}
 .mini td:first-child{font-weight:500;width:34%}
+.sub{margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
+.sub:first-of-type{margin-top:0;padding-top:0;border-top:0}
+.tag{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:999px;margin-left:6px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.tag.free{background:var(--accent-soft);color:var(--accent-ink)}
+.tmpl{background:var(--soft);border-radius:10px;padding:12px 14px;margin:8px 0 14px;white-space:pre-wrap;font-size:14px;line-height:1.55}
+.tmpl-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
+.tmpl-h b{font-size:14px}
+.copy{font-size:12.5px;padding:5px 10px;border-radius:8px}
+.utm{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr) auto;gap:8px 12px;align-items:center;font-size:13.5px;margin-top:10px}
+.utm code{background:var(--soft);padding:6px 8px;border-radius:6px;overflow-wrap:anywhere;font-size:12.5px}
+@media (max-width:620px){.utm{grid-template-columns:minmax(0,1fr)}}
+.week{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.week:first-of-type{border-top:0}
+.week .spend{font-size:13px;color:var(--muted);margin-top:4px}
+@media (max-width:620px){.week{grid-template-columns:minmax(0,1fr);gap:4px}}
 </style>
 </head>
 <body>
@@ -571,7 +586,146 @@ function kbFor(inp){
   }).map(r=>({s:r[0],c:r[1],a:r[4],sc:(r[0]==="Luxury Management"?3:0)+(r[2]!=="*"?2:0)+(r[3]!=="*"?1:0)})).sort((a,b)=>b.sc-a.sc);
 }
 
-let state={inp:null,budget:0,al:null,eco:null,ph:null,ai:null,kb:null};
+const TOOLS={
+ search:[["Google Ads","paid"],["Google Keyword Planner","free with an Ads account"],["Google Search Console","free"]],
+ seo:[["Google Search Console","free"],["Google Rich Results Test","free"],["GA4","free"],["AnswerThePublic","free tier"]],
+ meta:[["Meta Ads Manager","paid"],["Meta Pixel","free"],["Meta Business Suite","free"],["Canva","free tier"]],
+ organic:[["CapCut","free tier"],["Canva","free tier"],["Meta Business Suite for scheduling","free"],["Instagram Insights","free"]],
+ influencer:[["Instagram search","free"],["Google Sheets creator tracker","free"],["Instagram paid-partnership label","free"],["Google Docs brief","free"]],
+ video:[["YouTube Studio","free"],["Google Ads video campaigns","paid"],["CapCut","free tier"]],
+ crm:[["WhatsApp Business app","free"],["Brevo or Mailchimp","free tier"],["Google Forms for sign-ups","free"]],
+ marketplace:[["Marketplace seller dashboard","free"],["Sponsored product ads","paid"],["Canva for listing images","free tier"]],
+ linkedin:[["LinkedIn Campaign Manager","paid"],["LinkedIn Page analytics","free"],["Sales Navigator","paid"]],
+ events:[["Google Forms lead capture","free"],["Canva for collateral","free tier"],["HubSpot CRM","free tier"]],
+ sales:[["HubSpot or Zoho CRM","free tier"],["Google Slides or Canva for decks","free"]],
+ offline:[["Canva for artwork","free tier"],["QR code generator","free"],["Tracking links on QR codes","free"]],
+ local:[["Google Business Profile","free"],["Google Maps","free"],["Profile review link","free"]],
+ pr:[["Google Alerts","free"],["Google Sheets media list","free"],["Canva press kit","free tier"]],
+ trade:[["WhatsApp Business for partners","free"],["Google Sheets stock tracker","free"],["Canva for display material","free tier"]],
+ foundation:[["Google Sites or Carrd for a page","free / free tier"],["GA4","free"],["Google Tag Manager","free"],["Microsoft Clarity heatmaps","free"]],
+ test:[["Meta Ads Manager A/B test","free with ads"],["Google Sheets test log","free"]]
+};
+const UTMMAP={search:["google","cpc"],meta:["meta","paid_social"],organic:["instagram","organic_social"],influencer:["instagram","creator"],video:["youtube","paid_video"],crm:["email","email"],linkedin:["linkedin","paid_social"],local:["google","business_profile"],pr:["press","referral"],offline:["qr","offline"],events:["event","qr"],trade:["partner","referral"]};
+const WK={
+ media:{aware:[0,.25,.35,.40],lead:[.2,.25,.25,.3],sales:[.2,.25,.25,.3],retain:[.25,.25,.25,.25],expand:[.15,.25,.3,.3]},
+ organic:[.3,.25,.25,.2],influencer:[.2,.4,.25,.15],foundation:[.6,.3,.1,0],test:[.1,.4,.4,.1],crm:[.25,.25,.25,.25]
+};
+const WTASK={
+ aware:["Set up profiles, the portfolio page and tracking. Produce the first batch of content and shortlist creators.","Send gifts or briefs to creators and post consistently. Boost the two posts that earned the most saves and shares.","Increase boosts on the best posts, reshare creator content, and retarget video viewers.","Keep posting and boosting winners. Review reach, frequency and branded search, and plan next month."],
+ lead:["Set up lead capture, qualification criteria and tracking. Build the landing page and one or two lead offers.","Launch search and lead ads with two or three offers.","Cut sources with poor lead quality. Start the nurture sequence for leads not ready to buy.","Move budget to the source with the lowest cost per qualified lead. Review and plan next month."],
+ sales:["Set up conversion tracking, landing pages and creative variants.","Launch prospecting and search with two or three variants each.","Pause anything below break-even and add retargeting for visitors who didn't buy.","Raise budget on winners in 20–30% steps and watch cost per order."],
+ retain:["Segment customers by recency, frequency and value. Set up welcome and repeat-purchase flows.","Launch the flows and collect feedback from recent buyers.","Offer loyalty or referral rewards to your best customers.","Win back lapsed customers with a personal message. Review repeat rate."],
+ expand:["Research the new market and line up partners or distribution.","Run small demand tests with localised creative.","Put more behind the segment and channel with the best early response.","Review results per market and set next month's targets."]
+};
+const slug=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"brand";
+function templates(inp){
+  const fam=FAM(inp.goal),lux=inp.pos==="luxury",nw=inp.stage==="new";
+  const nm=inp.name||"[Brand]",aud=inp.audience||"[target audience]",cat=inp.industry||"[category]",prod=inp.products||"[product or service]";
+  const T=[];
+  const lc=t=>/^[A-Z][a-z]/.test(t)?t[0].toLowerCase()+t.slice(1):t;
+  const audL=lc(aud),catL=inp.industry?lc(inp.industry)+" brand":"[category]";
+  T.push(["Positioning statement",/\bwho\b/i.test(aud)?`For ${audL}, ${nm} is the ${catL} that [key benefit] because [reason to believe].`:`For ${audL} who [need or problem], ${nm} is the ${catL} that [key benefit] because [reason to believe].`]);
+  T.push(["Creator outreach message",lux?
+`Hi [creator name], I've followed your work on [topic] for a while. I run ${nm}: ${prod}.
+
+I'd like to create a piece for you as a gift, with no obligation to post. If you do share it, we'll credit you and label it as a gifted collaboration.
+
+Would you be open to it?`:
+`Hi [creator name], I'm reaching out from ${nm}. We make ${prod} for ${aud}, and your audience looks like a close fit.
+
+We'd love to send you [product] to try. If you'd like to post about it, [we can pay your fee / offer ...], and we'd ask that the post is labelled as a paid partnership.
+
+Interested?`]);
+  const cap={
+   aware:lux?[`Every piece from ${nm} is made for one person. Here's how it begins.`,`Not made for everyone. Made for you. ${nm}.`,`Behind the craft: [one detail only you do].`]:[`Meet ${nm}: [one-line promise] for ${aud}.`,`[Surprising fact or detail about your product]. That's ${nm}.`,`Here's how we make [product], start to finish.`],
+   lead:[`Get [free resource] built for ${aud}.`,`[Problem your audience has]? Here's how ${nm} solves it. Book a call.`,`See how [customer type] use ${nm} to [result].`],
+   sales:lux?[`${nm}. [One-line promise]. Limited each month.`,`[Proof point: client, craft or detail]. Request yours.`,`Made to order. Made once. ${nm}.`]:[`[Main benefit], without [main pain]. Order today.`,`Why ${aud} choose ${nm}: [proof point].`,`[Product] from ${nm}. [Offer or reason to act now].`],
+   retain:[`Thank you for being with ${nm}. Here's [reward] for your next order.`,`You bought [product] [time] ago. Ready for [next product or refill]?`,`Tell a friend about ${nm}: you both get [reward].`],
+   expand:[`${nm} is now in [new market]. [One-line promise].`,`[Local proof point]. ${nm}, now available in [location].`,`Find ${nm} at [partner or store].`]
+  }[fam];
+  T.push(["Ad and post caption starters",cap.map((c,i)=>`${i+1}. ${c}`).join("\n")]);
+  if(nw||lux)T.push([lux?"Waitlist or commission page":"Launch page",lux?
+`Headline: ${nm}. [One-line promise].
+Line under it: We accept a limited number of commissions each month.
+Button: Request a commission
+Below: three examples of past work, how the process works in three steps, and a short founder note.`:
+`Headline: ${nm}. [One-line promise].
+Line under it: Be the first to know when we launch.
+Button: Join the waitlist
+Below: what makes it different, one example or sample, and a short founder note.`]);
+  else T.push(["Landing page",`Headline: [Main benefit for ${aud}]
+Line under it: [How ${nm} delivers it, in one sentence]
+Button: [Clear action: Buy now / Book a call / Get a quote]
+Below: three proof points, customer reviews, and answers to the top three questions.`]);
+  return T;
+}
+function weekly(inp,rows){
+  const fam=FAM(inp.goal),mo=state.al.monthly;
+  return [0,1,2,3].map(wi=>{
+    const sp=rows.map(r=>{
+      let w=WK[r.c]||WK.media[fam]||WK.media.sales;
+      if(Array.isArray(w)===false)w=WK.media.sales;
+      return {c:r.c,amt:r.mo*w[wi]};
+    }).filter(x=>x.amt>=1);
+    let tasks=WTASK[fam][wi];
+    if(wi===0&&inp.pos==="luxury")tasks+=" Decide how many commissions or units you'll offer this month and open the waitlist.";
+    return {w:wi+1,tasks,sp,total:sp.reduce((s,x)=>s+x.amt,0)};
+  });
+}
+function utmLinks(inp,rows){
+  let base=(state.site||"https://yourwebsite.com").trim().replace(/\s+/g,"");
+  if(/^https?:\/\/[^\/?#]+$/i.test(base))base+="/";
+  const camp=slug(inp.name)+"-"+slug(GOALS[inp.goal]);
+  const out=[];
+  rows.forEach(r=>{const m=UTMMAP[r.c];if(!m)return;
+    const sep=base.includes("?")?"&":"?";
+    let u=`${base}${sep}utm_source=${m[0]}&utm_medium=${m[1]}&utm_campaign=${camp}`;
+    if(r.c==="influencer")u+="&utm_content=[creator-name]";
+    if(r.c==="crm")out.push(["WhatsApp",`${base}${sep}utm_source=whatsapp&utm_medium=message&utm_campaign=${camp}`]);
+    out.push([CH[r.c].n,u]);});
+  return out;
+}
+function copyText(t,btn){const done=()=>{const o=btn.textContent;btn.textContent="Copied";setTimeout(()=>btn.textContent=o,1400)};
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(done).catch(()=>{btn.textContent="Select and copy manually"})}
+function paintExec(){
+  const sec=$("#exec-sec");if(!sec)return;const {inp,al}=state;
+  const rows=al.rows;const media=rows.filter(r=>r.c!=="test");
+  const wk=weekly(inp,rows),tp=templates(inp),ut=utmLinks(inp,rows);
+  const toolRows=rows.map(r=>`<tr><td>${esc(CH[r.c].n)}</td><td>${(TOOLS[r.c]||[]).map(t=>`${esc(t[0])}<span class="tag ${t[1].startsWith("free")?"free":""}">${esc(t[1])}</span>`).join("<br>")}</td></tr>`).join("");
+  sec.innerHTML=`<h2>How to execute</h2>
+  <div class="sub"><h3>1. Tools for each channel</h3><p class="small muted">Free options first. Prices change often, so check each tool's current plan before paying.</p><table class="mini">${toolRows}</table></div>
+  <div class="sub"><h3>2. Week by week${inp.months>1?" (month 1)":""}</h3><p class="small muted">${inp.months>1?"The first month in detail; later months follow the roadmap above. ":""}Spend follows the work: content and creators first, paid boosts once you know what performs.</p>
+   ${wk.map(w=>`<div class="week"><div><b>Week ${w.w}</b><div class="small muted">${inr(w.total)}</div></div><div>${esc(w.tasks)}<div class="spend">${w.sp.map(x=>esc(CH[x.c].n)+" "+inr(x.amt)).join(" · ")}</div></div></div>`).join("")}</div>
+  <div class="sub"><h3>3. Ready-to-use templates</h3><p class="small muted">Filled in from your inputs. Replace anything in [brackets].</p>
+   ${tp.map((t,i)=>`<div class="tmpl-h"><b>${esc(t[0])}</b><button type="button" class="copy" data-t="${i}">Copy</button></div><div class="tmpl" id="tp${i}">${esc(t[1])}</div>`).join("")}</div>
+  <div class="sub"><h3>4. Tracking links</h3><p class="small muted">Use these links in each channel so GA4 shows which one brought each visitor. If Google Ads auto-tagging is on, you don't need the search link.</p>
+   <label for="site" style="margin-top:6px">Your website or page address</label><input id="site" placeholder="https://yourwebsite.com" value="${esc(state.site||"")}">
+   <div class="utm" id="utm">${ut.length?ut.map((u,i)=>`<span>${esc(u[0])}</span><code id="u${i}">${esc(u[1])}</code><button type="button" class="copy" data-u="${i}">Copy</button>`).join(""):`<span class="muted">No trackable channels in this plan.</span>`}</div></div>
+  <div class="sub"><h3>5. KPI tracker</h3><p class="small muted">A spreadsheet with every channel, its spend and the KPIs to judge it on, with a column for each ${inp.months<=3?"week":"month"}. Fill in actual results; your first ${inp.months<=3?"week":"month"} becomes your baseline.</p>
+   <button type="button" id="kpi">Download KPI tracker (.csv)</button> <span class="small muted" id="kpio" role="status"></span></div>`;
+  sec.querySelectorAll("[data-t]").forEach(b=>b.addEventListener("click",()=>copyText(tp[+b.dataset.t][1],b)));
+  sec.querySelectorAll("[data-u]").forEach(b=>b.addEventListener("click",()=>copyText(utmLinks(state.inp,state.al.rows)[+b.dataset.u][1],b)));
+  $("#site").addEventListener("input",e=>{state.site=e.target.value;const ut2=utmLinks(state.inp,state.al.rows);ut2.forEach((u,i)=>{const c=$("#u"+i);if(c)c.textContent=u[1]})});
+  $("#kpi").addEventListener("click",downloadKPI);
+}
+function kpiCSV(){
+  const {inp,al}=state;const byWeek=inp.months<=3;const n=byWeek?Math.round(inp.months*4.33):inp.months;
+  const cols=Array.from({length:n},(_,i)=>(byWeek?"Week ":"Month ")+(i+1));
+  const q=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const L=[[`KPI tracker: ${inp.name}`],[`Goal: ${GOALS[inp.goal]}`,`Budget: ${Math.round(state.budget)}`,`Period: ${inp.months} month(s)`],[],["Channel","Metric","Planned per month (INR)",...cols,"Notes"]];
+  al.rows.forEach(r=>{const ak=actsFor(r.c,inp);
+    L.push([CH[r.c].n,"Spend (INR)",Math.round(r.mo),...cols.map(()=>""),""]);
+    ak.k.forEach(k=>L.push([CH[r.c].n,k,"",...cols.map(()=>""),""]));});
+  return L.map(r=>r.map(q).join(",")).join("\n");
+}
+function downloadKPI(){
+  const o=$("#kpio");
+  try{const url=URL.createObjectURL(new Blob(["\ufeff"+kpiCSV()],{type:"text/csv"}));const a=document.createElement("a");
+    a.href=url;a.download=slug(state.inp.name)+"-kpi-tracker.csv";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);o.textContent="Downloaded"}
+  catch(e){o.textContent="Download failed."}
+}
+
+let state={site:"",inp:null,budget:0,al:null,eco:null,ph:null,ai:null,kb:null};
 let sampleFn=null,downloadsFn=null,aiCtl=null;
 
 
@@ -605,6 +759,7 @@ function render(){
   </section>
   <section class="panel" id="eco-sec"></section>
   <section class="panel"><h2>Roadmap</h2><div id="ph"></div></section>
+  <section class="panel" id="exec-sec"></section>
   <section class="panel"><h2>Checks on your inputs</h2><div class="checks" id="chk"></div></section>
   <section class="panel"><h2>Frameworks behind this plan</h2><div class="kb" id="kb"></div></section>
   <section class="panel"><div class="bar-actions"><button type="button" id="dl">Download plan (.md)</button><button type="button" id="cp">Copy plan as text</button><span class="small muted" id="cpo" role="status"></span></div></section>`;
@@ -640,6 +795,7 @@ function paintRest(){
   $("#ph").innerHTML=ph.map((p,i)=>`<div class="phase ${i===0?"on":""}"><h3>${esc(p.t)}</h3><div class="when">${esc(p.when)} · about ${inr(p.amt)}</div><ul>${p.items.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`).join("");
   $("#chk").innerHTML=checks(inp,al,eco).map(c=>`<div class="${c[0]}">${esc(c[1])}</div>`).join("");
   const g={};state.kb.slice(0,24).forEach(k=>{(g[k.s]=g[k.s]||[]).push(k)});
+  paintExec();
   $("#kb").innerHTML=Object.entries(g).map(([s,arr])=>`<div class="grp"><b>${esc(s)}</b>${arr.map(k=>`<p><strong>${esc(k.c)}.</strong> ${esc(k.a)}</p>`).join("")}</div>`).join("");
 }
 
@@ -745,6 +901,12 @@ function toMarkdown(){
   al.rows.forEach(r=>{const ak=actsFor(r.c,inp);L.push(``,`### ${CH[r.c].n} (${inr(r.amt)})`);ak.a.forEach(a=>L.push(`- ${a[0]}: ${inr(r.amt*a[1]/100)}`));L.push(`- Judge on: ${ak.k.join(", ")}`)});
   if(eco){L.push(``,`## Spending limits`,`- Break-even ROAS: ${eco.beRoas.toFixed(2)}`,`- Contribution per order: ${inr(eco.contrib)}`);if(eco.clv)L.push(`- CLV: ${inr(eco.clv)}`);if(eco.maxCac)L.push(`- Max affordable CAC: ${inr(eco.maxCac)}`);if(eco.reqRoas)L.push(`- ROAS needed for target: ${eco.reqRoas.toFixed(2)}`)}
   L.push(``,`## Roadmap`);ph.forEach(p=>{L.push(``,`### ${p.t} (${p.when}, about ${inr(p.amt)})`);p.items.forEach(t=>L.push(`- ${t}`))});
+  L.push(``,`## How to execute`,``,`### Tools for each channel`);
+  al.rows.forEach(r=>L.push(`- ${CH[r.c].n}: ${(TOOLS[r.c]||[]).map(t=>t[0]+" ("+t[1]+")").join(", ")}`));
+  L.push(``,`### Week by week${inp.months>1?" (month 1)":""}`);
+  weekly(inp,al.rows).forEach(w=>L.push(`- Week ${w.w} (${inr(w.total)}): ${w.tasks} Spend: ${w.sp.map(x=>CH[x.c].n+" "+inr(x.amt)).join(", ")}`));
+  L.push(``,`### Templates`);templates(inp).forEach(t=>L.push(``,`**${t[0]}**`,``,t[1]));
+  const ul2=utmLinks(inp,al.rows);if(ul2.length){L.push(``,`### Tracking links`);ul2.forEach(u=>L.push(`- ${u[0]}: ${u[1]}`))}
   L.push(``,`## Checks`);checks(inp,al,eco).forEach(c=>L.push(`- ${c[1]}`));
   if(ai){const s=ai.situation||{},w=ai.swot||{},st=ai.stp||{},m=ai.messaging||{};
     L.push(``,`## Strategy`,``,ai.executive_summary||"");if(ai.objective)L.push(``,`**Objective:** ${ai.objective}`);
