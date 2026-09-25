@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Marketing plan builder by Anurag Sahu</title>
+<meta name="description" content="Enter a company, goal and budget. Get a channel-by-channel budget split, activity-level spend, spending limits, a phased roadmap and the marketing frameworks behind it.">
+<meta property="og:title" content="Marketing plan builder">
+<meta property="og:description" content="Budget split, spending limits, roadmap and frameworks for any company, goal and budget.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6F9;--panel:#FFFFFF;--ink:#14213D;--muted:#56637A;--line:#DDE2EA;--soft:#EEF1F5;
+  --accent:#E0A21A;--accent-ink:#7A5300;--accent-soft:#FBF1D9;--pos:#1F7A5A;--neg:#B63A4E;--warn-soft:#FCEFF1;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1626;--panel:#16203A;--ink:#E8ECF3;--muted:#9AA6BC;--line:#26324F;--soft:#1C2745;
+  --accent:#F0B53A;--accent-ink:#F0B53A;--accent-soft:#2E2A1C;--pos:#4FC296;--neg:#E77A8C;--warn-soft:#2D1D26;}}
+:root[data-theme="dark"]{
+  --bg:#0F1626;--panel:#16203A;--ink:#E8ECF3;--muted:#9AA6BC;--line:#26324F;--soft:#1C2745;
+  --accent:#F0B53A;--accent-ink:#F0B53A;--accent-soft:#2E2A1C;--pos:#4FC296;--neg:#E77A8C;--warn-soft:#2D1D26;}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1260px;margin:0 auto;padding:28px 20px 60px}
+header.mast{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+h1{font:700 clamp(28px,4vw,40px)/1.05 var(--display);letter-spacing:-.02em;margin:0}
+.lede{color:var(--muted);margin:6px 0 0;max-width:62ch}
+.grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+form.panel{position:sticky;top:calc(16px + env(safe-area-inset-top,0px))}
+@media (max-width:920px){form.panel{position:static}}
+h2{font:700 20px/1.2 var(--display);margin:0 0 14px;letter-spacing:-.01em}
+h3{font:600 15px/1.3 var(--body);margin:0 0 8px}
+label{display:block;font-size:13px;font-weight:500;margin:14px 0 6px}
+.hint{font-weight:400;color:var(--muted)}
+input,select,textarea{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+textarea{min-height:64px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two label{margin-top:14px}
+.goals{display:flex;flex-wrap:wrap;gap:6px}
+.goals input{position:absolute;opacity:0;width:1px;height:1px}
+.goals label{margin:0;font-weight:500;font-size:13px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;cursor:pointer;background:var(--bg)}
+.goals input:checked+label{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.goals input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+details{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:600;font-size:14px}
+button{font:inherit;font-weight:600;border-radius:10px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 14px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#231800;width:100%;margin-top:18px;padding:12px;font-size:15px}
+button:hover{border-color:var(--muted)}
+.err{color:var(--neg);font-size:13px;margin-top:8px;min-height:1em}
+.empty{padding:48px 28px;text-align:left}
+.empty p{color:var(--muted);max-width:56ch}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:20px}
+.steps div{border-left:3px solid var(--accent);padding:4px 0 4px 12px;font-size:14px}
+.steps b{display:block;font-family:var(--display);font-size:16px}
+.out>section{margin-bottom:20px}
+.total{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.total .big{font:700 clamp(34px,5vw,52px)/1 var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
+.chip{font-size:12.5px;padding:3px 10px;border-radius:999px;background:var(--soft);color:var(--muted)}
+.rupeebar{display:flex;height:46px;border-radius:10px;overflow:hidden;margin:18px 0 8px;border:1px solid var(--line)}
+.rupeebar span{display:block;height:100%;min-width:3px;transition:flex-grow .35s ease}
+@media (prefers-reduced-motion:reduce){.rupeebar span{transition:none}}
+.whatif{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;font-size:14px;color:var(--muted)}
+.whatif input{flex:1;min-width:160px;padding:0;accent-color:var(--accent);background:transparent;border:0}
+.alloc{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}
+.alloc th{text-align:left;font-weight:500;color:var(--muted);font-size:12.5px;padding:8px 6px;border-bottom:1px solid var(--line)}
+.alloc td{padding:10px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.alloc td.num,.alloc th.num{text-align:right;white-space:nowrap}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:0}
+.rowbtn{background:none;border:0;padding:0;font-weight:600;text-align:left;color:var(--ink)}
+.rowbtn::after{content:" +";color:var(--muted);font-weight:400}
+.rowbtn[aria-expanded="true"]::after{content:" −"}
+.acts{margin:8px 0 2px;padding:10px 12px;background:var(--soft);border-radius:8px;font-size:13.5px}
+.acts div{display:flex;justify-content:space-between;gap:12px;padding:2px 0}
+.acts .k{color:var(--muted);margin-top:6px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.stat{background:var(--soft);border-radius:10px;padding:12px 14px}
+.stat .v{font:700 22px/1.2 var(--display);font-variant-numeric:tabular-nums}
+.stat .l{font-size:13px;color:var(--muted)}
+.phase{border-left:3px solid var(--line);padding:2px 0 10px 14px;margin-bottom:10px}
+.phase.on{border-left-color:var(--accent)}
+.phase .when{font-size:13px;color:var(--muted)}
+.checks div{padding:10px 12px;border-radius:8px;margin-bottom:8px;font-size:14px}
+.checks .warn{background:var(--warn-soft)}
+.checks .ok{background:var(--soft)}
+.ai-status{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+.pulse{width:9px;height:9px;border-radius:50%;background:var(--accent);animation:p 1.2s ease-in-out infinite}
+@keyframes p{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+.ai h3{margin-top:18px}
+.ai ul{margin:6px 0;padding-left:18px}
+.ai li{margin:3px 0}
+.pos{font-family:var(--display);font-size:17px;line-height:1.45;border-left:3px solid var(--accent);padding:4px 0 4px 14px;margin:8px 0}
+.kb{columns:2 260px;column-gap:24px;font-size:13.5px}
+.kb .grp{break-inside:avoid;margin-bottom:14px}
+.kb .grp b{font-family:var(--display);font-size:14px}
+.kb p{margin:3px 0;color:var(--muted)}
+.kb p strong{color:var(--ink);font-weight:500}
+.bar-actions{display:flex;gap:8px;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.mini{width:100%;border-collapse:collapse;font-size:13.5px}
+.mini td{padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+.mini td:first-child{font-weight:500;width:34%}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="mast">
+  <div>
+    <h1>Marketing plan builder</h1>
+    <p class="lede">Tell it about the company, the goal and the budget. It returns where to invest, how much, on what activities, and the marketing frameworks behind each choice, drawn from 20 subjects.</p>
+    <p class="small muted" style="margin:6px 0 0">Built by Anurag Sahu, MBA Marketing, BML Munjal University</p>
+  </div>
+</header>
+
+<div class="grid">
+<form class="panel" id="f" novalidate>
+  <h2>Your company</h2>
+  <label for="name">Brand or company name</label>
+  <input id="name" name="name" placeholder="Urban Brew Coffee" required>
+  <label for="industry">Industry</label>
+  <input id="industry" name="industry" placeholder="Packaged specialty coffee" required>
+  <div class="two">
+    <div><label for="model">Business model</label>
+      <select id="model" name="model">
+        <option value="d2c">D2C / e-commerce</option>
+        <option value="b2b">B2B / industrial</option>
+        <option value="saas">SaaS / subscription</option>
+        <option value="svc">Services</option>
+        <option value="ret">Retail / FMCG in stores</option>
+        <option value="loc">Local business</option>
+      </select></div>
+    <div><label for="stage">Stage</label>
+      <select id="stage" name="stage">
+        <option value="new">New or pre-launch</option>
+        <option value="growing" selected>Growing</option>
+        <option value="established">Established</option>
+      </select></div>
+  </div>
+  <label for="products">Products or services</label>
+  <textarea id="products" name="products" placeholder="Single-origin beans, cold brew cans, monthly subscription"></textarea>
+  <label for="audience">Target audience</label>
+  <textarea id="audience" name="audience" placeholder="Urban professionals, 24–38, who brew at home"></textarea>
+
+  <label id="goal-l">Primary goal</label>
+  <div class="goals" role="radiogroup" aria-labelledby="goal-l" id="goals"></div>
+
+  <div class="two">
+    <div><label for="budget">Total budget (₹)</label>
+      <input id="budget" name="budget" type="number" min="1000" step="1000" inputmode="numeric" placeholder="600000" required></div>
+    <div><label for="months">Period</label>
+      <select id="months" name="months">
+        <option value="1">1 month</option>
+        <option value="3" selected>3 months</option>
+        <option value="6">6 months</option>
+        <option value="12">12 months</option>
+      </select></div>
+  </div>
+  <label for="geo">Geography <span class="hint">optional</span></label>
+  <input id="geo" name="geo" placeholder="Delhi NCR, Bengaluru">
+  <label for="comp">Competitors <span class="hint">optional</span></label>
+  <input id="comp" name="comp" placeholder="Blue Tokai, Third Wave">
+
+  <details id="adv">
+    <summary>Numbers that sharpen the plan</summary>
+    <div class="two">
+      <div><label for="aov" id="aovl">Average order value (₹)</label><input id="aov" name="aov" type="number" min="0" inputmode="numeric"></div>
+      <div><label for="margin">Gross margin (%)</label><input id="margin" name="margin" type="number" min="1" max="99" inputmode="numeric"></div>
+    </div>
+    <div class="two">
+      <div><label for="orders">Purchases per customer, lifetime</label><input id="orders" name="orders" type="number" min="1" step="0.1" inputmode="decimal"></div>
+      <div><label for="target">Revenue target for period (₹)</label><input id="target" name="target" type="number" min="0" inputmode="numeric"></div>
+    </div>
+    <label for="current">What you do today and how it performs <span class="hint">optional</span></label>
+    <textarea id="current" name="current" placeholder="Instagram ads ₹40k/month, ROAS 2.1; email list 3,000"></textarea>
+    <label id="ex-l">Channels you can't use</label>
+    <div class="goals" id="exclude" aria-labelledby="ex-l"></div>
+  </details>
+
+  <button class="primary" type="submit">Build my plan</button>
+  <div class="err" id="err" role="alert"></div>
+</form>
+
+<main id="out" class="out" aria-live="polite">
+  <section class="panel empty">
+    <h2>Your plan appears here</h2>
+    <p>Fill in the company, goal and budget. You'll get a channel-by-channel budget split, the activities inside each channel, the unit economics that set your spending limits, a phased roadmap, and the frameworks behind every choice.</p>
+    <div class="steps">
+      <div><b>Where to invest</b>Channels picked for your goal and model</div>
+      <div><b>How much</b>Rupee split, per month and per activity</div>
+      <div><b>Why</b>Frameworks from brand, digital, CRM, growth and more</div>
+      <div><b>What next</b>Phased roadmap, KPIs and checks</div>
+    </div>
+  </section>
+</main>
+</div>
+<footer style="margin-top:36px;padding-top:20px;border-top:1px solid var(--line)" class="small muted">
+  <h2 style="font-size:17px">How it works</h2>
+  <p style="max-width:78ch">The budget split follows fixed rules: each goal weights the channels that serve it, the business model adjusts those weights (B2B leans to LinkedIn, events and sales enablement; local businesses to local search), and channels that can't be funded to a workable monthly minimum are dropped so small budgets stay concentrated. Ten percent is held back for testing and a share goes to tracking, landing pages and creative. Spending limits are calculated only from the numbers you enter. Frameworks come from about 100 concepts across brand, services, digital, B2B, sales and distribution, pricing, product, strategy, consumer behaviour, research, IMC, analytics, growth, CRM, AI and marketing law.</p>
+  <p style="max-width:78ch">Channel weights and minimum spends are planning rules, not market data. Treat the plan as a starting point and let your first month of results guide the next. Your inputs stay in your browser.</p>
+  <p>Built by Anurag Sahu · MBA Marketing, BML Munjal University</p>
+</footer>
+</div>
+</div>
+
+<script>
+const KB=[
+["Brand Management","Keller CBBE: salience","aw,br,la","*","Build depth and breadth of awareness before pushing conversion; track recall and branded search."],
+["Brand Management","Aaker brand equity (awareness, perceived quality, associations, loyalty)","br,rt","*","Invest in perceived quality and loyalty, not awareness alone."],
+["Brand Management","Kapferer brand identity prism","br,la","*","Define physique, personality, culture, relationship, reflection and self-image before creative work."],
+["Brand Management","Points of parity and points of difference","*","*","Match the category's must-haves; lead every message with one credible point of difference."],
+["Brand Management","Positioning statement","*","*","For [target] who [need], [brand] is the [frame] that [benefit] because [reason to believe]."],
+["Brand Management","Brand element criteria","la,br","*","Name, logo and packaging should be memorable, meaningful, likable, transferable, adaptable and protectable."],
+["Brand Management","Brand resonance","rt,en","*","Aim for behavioural loyalty, attachment, community and active engagement."],
+["Brand Management","Brand extensions and extensibility","ex","*","Check that brand associations transfer before entering a new category."],
+["Brand Management","Evoked set","aw,sl,ac","*","Brands outside the consideration set are not chosen; get in first."],
+["Service Marketing","7Ps","*","svc,loc","Add people, process and physical evidence to the mix."],
+["Service Marketing","SERVQUAL","rt","svc,loc,saas","Measure reliability, assurance, tangibles, empathy and responsiveness."],
+["Service Marketing","Gap model","rt","svc,loc,saas","Diagnose knowledge, standards, delivery and communication gaps."],
+["Service Marketing","Zone of tolerance","rt,br","svc,loc","Promise within the adequate-to-desired range; overpromising widens the gap."],
+["Service Marketing","Service recovery and recovery paradox","rt","*","Fast, fair recovery can make complainers more loyal than before."],
+["Service Marketing","Physical evidence and servicescape","br,sl","svc,loc,ret","Tangible cues sell an intangible service."],
+["Service Marketing","Demand and capacity, yield management","sl","svc,loc","Shift demand to off-peak with pricing; protect peak capacity."],
+["Service Marketing","Relationship bonds","rt","*","Layer financial, social, customisation and structural bonds."],
+["Digital Marketing","Funnel: reach, engage, convert, retain","*","*","Put money into the leakiest stage, not the loudest channel."],
+["Digital Marketing","Search intent and E-E-A-T","aw,ld,sl,ac","*","Build content for informational and commercial intent; organic traffic compounds."],
+["Digital Marketing","Ad Rank and Quality Score","ld,sl,ac","*","Relevance lowers CPC; align keyword, ad and landing page."],
+["Digital Marketing","Attribution models","sl,ac,aw","*","Don't judge upper-funnel channels on last-click alone."],
+["Digital Marketing","Remarketing","sl,ac","*","Recapture engaged non-buyers at a lower CPA."],
+["Digital Marketing","Drip funnels","ld,rt,sl","*","Trigger-based nurture from first touch to purchase and repeat."],
+["Digital Marketing","Network centrality (betweenness)","en,aw","*","Seed content with bridge accounts to cross communities."],
+["Digital Marketing","Micro and macro conversions (GA4)","*","*","Track micro steps to find exactly where people drop."],
+["Digital Marketing","Content marketing process","aw,en,ld","*","Research, objective, audience, plan, create, distribute, measure."],
+["B2B Marketing","Buying centre","ld,sl","b2b","Map initiator, user, influencer, decider, buyer and gatekeeper; message each."],
+["B2B Marketing","Buyclasses","sl,ex","b2b","New task needs education; straight rebuy needs reliability; out-suppliers aim for modified rebuy."],
+["B2B Marketing","Total cost of ownership","sl","b2b","Sell lifetime cost, not unit price."],
+["B2B Marketing","Account-based marketing","ld,sl","b2b,saas","Concentrate effort on named high-value accounts."],
+["B2B Marketing","Trade show process","ld,la","b2b","Pre-show outreach, at-show capture, post-show follow-up within 48 hours."],
+["B2B Marketing","Key account management","rt","b2b","Grow share of business with top accounts."],
+["B2B Marketing","MQL to SQL flow","ld","b2b,saas","Agree qualification criteria with sales before buying leads."],
+["Sales and Distribution","Distribution intensity","ex,sl","d2c,ret,b2b","Choose intensive, selective or exclusive to match positioning."],
+["Sales and Distribution","Push vs pull","sl,la","ret,b2b","Balance trade incentives with consumer demand."],
+["Sales and Distribution","Channel conflict","ex","ret,d2c","Don't undercut distributors with your own online prices."],
+["Sales and Distribution","SPIN selling","ld,sl","b2b,svc","Situation, problem, implication, need-payoff questions."],
+["Sales and Distribution","Territory and quota design","ex","b2b,ret","Allocate effort by potential, not habit."],
+["Pricing","Break-even ROAS","sl,ac","*","Break-even ROAS = 1 ÷ margin; a channel below it loses money."],
+["Pricing","Skimming vs penetration","la","*","Skim for premium innovation; penetrate for mass trial."],
+["Pricing","Value-based pricing","sl,br","*","Price on perceived value, not cost-plus."],
+["Pricing","Bundling","sl,rt","d2c,saas,ret","Mixed bundles raise order value."],
+["Pricing","Anchoring and decoys","sl","d2c,ret,saas","Use anchors and decoy tiers on offer pages."],
+["Pricing","Discount trap","sl,br","*","Permanent discounts lower reference price and brand equity."],
+["Product Management","Product life cycle","la,ex","*","Introduction: awareness and trial; growth: preference; maturity: defend and modify."],
+["Product Management","BCG matrix","ex","*","Fund question marks from cash cows; cut dogs."],
+["Product Management","Ansoff matrix","ex","*","Penetration, market development, product development or diversification."],
+["Product Management","Test marketing","la","*","Test in one market before full rollout."],
+["Product Management","Diffusion of innovation","la","*","Win innovators and early adopters first, then cross the chasm."],
+["Marketing Strategy","SWOT to TOWS","*","*","Turn SWOT into SO, WO, ST and WT strategies."],
+["Marketing Strategy","Porter's five forces","ex","*","Judge industry attractiveness before entry."],
+["Marketing Strategy","Generic strategies","*","*","Pick cost leadership, differentiation or focus; don't get stuck in the middle."],
+["Marketing Strategy","Challenger and nicher strategies","ex,ac","*","When smaller, flank or niche rather than attack head-on."],
+["Marketing Strategy","STP","*","*","Segment, choose a target, then position."],
+["Marketing Strategy","5Cs","*","*","Company, customers, competitors, collaborators, context."],
+["Marketing Strategy","Blue ocean (ERRC)","la,ex","*","Eliminate, reduce, raise, create to escape head-on competition."],
+["Consumer Behaviour","Elaboration likelihood model","*","*","High involvement needs strong arguments; low involvement runs on cues."],
+["Consumer Behaviour","FCB grid","aw,br","*","Match think/feel and involvement level to message style."],
+["Consumer Behaviour","Perceived risk","sl,la,ac","*","Reduce risk with guarantees, reviews, samples and trials."],
+["Consumer Behaviour","Reference groups and opinion leaders","aw,en","*","Creators and communities supply normative and informational influence."],
+["Consumer Behaviour","Cognitive dissonance","rt","*","Post-purchase reassurance cuts returns and churn."],
+["Consumer Behaviour","Fishbein multi-attribute model","br,sl","*","Shift beliefs on the attributes customers weight most."],
+["Marketing Research","Exploratory research","la,br,ex","*","Validate target and message with quick interviews before scaling."],
+["Marketing Research","A/B testing","sl,ld,ac","*","Test one variable; wait for significance before deciding."],
+["Marketing Research","Conjoint and pricing research","la,sl","*","Measure willingness to pay before launch."],
+["Luxury Management","Anti-laws of marketing","br","*","For luxury: never discount, control distribution, communicate the dream."],
+["Luxury Management","Rarity management","br","*","Manage scarcity through limited editions and selective channels."],
+["Retail Management","Visual merchandising and atmospherics","sl","ret,loc","In-store cues drive conversion."],
+["Retail Management","Retail media","sl,aw","d2c,ret","Advertise inside marketplaces where purchase happens."],
+["International Marketing","Entry modes","ex","*","Export, licensing, JV or subsidiary by risk and control."],
+["International Marketing","Standardisation vs adaptation","ex","*","Adapt product and message to local culture."],
+["Rural Marketing","4A's","ex","ret,d2c,loc","Availability, affordability, acceptability, awareness."],
+["AI in Marketing","Generative engine optimisation (GEO)","aw,br,ld","*","Get cited in AI answers: entity clarity, structured data, third-party mentions."],
+["AI in Marketing","Agentic commerce readiness","sl","d2c,ret","Structured product data and machine-readable policies so AI shopping agents can buy."],
+["AI in Marketing","Predictive churn and CLV","rt","*","Score customers and target those at risk."],
+["AI in Marketing","Generative creative testing","aw,sl,ac","*","Produce many variants cheaply; test before scaling spend."],
+["AI in Marketing","Personalisation and next-best-offer","rt,sl","*","Recommendations raise order value and repeat rate."],
+["IMC and Advertising","DAGMAR","aw,br,la","*","Set measurable communication objectives: awareness, comprehension, conviction, action."],
+["IMC and Advertising","Reach, frequency, GRP","aw,la,br","*","Plan effective frequency of three or more in the target audience."],
+["IMC and Advertising","Continuity, flighting, pulsing","aw,la","*","Pulse spend around seasonal peaks."],
+["IMC and Advertising","Share of voice vs share of market","aw,br","*","Share of voice above share of market tends to grow share."],
+["IMC and Advertising","Consumer vs trade promotion","sl,la","ret,d2c","Use sampling for trial; avoid permanent discounting."],
+["IMC and Advertising","PR and earned media","aw,br,la","*","Earned coverage builds credibility cheaply."],
+["Marketing Analytics","KPI tree","*","*","Revenue = traffic × conversion × order value; fix the weakest driver."],
+["Marketing Analytics","ROMI","*","*","Judge spend on incremental margin, not revenue."],
+["Marketing Analytics","RFM segmentation","rt","*","Treat champions, at-risk and lapsed customers differently."],
+["Marketing Analytics","Incrementality testing","sl,ac","*","Holdouts show what ads actually cause."],
+["Marketing Analytics","Diminishing returns (MMM)","*","*","Each extra rupee in a channel returns less; scale in steps."],
+["Growth Marketing","AARRR","ac,rt,en","d2c,saas","Acquisition, activation, retention, referral, revenue."],
+["Growth Marketing","Product-market fit","la","saas,d2c","Don't scale spend before retention flattens."],
+["Growth Marketing","CLV to CAC of 3:1","ac,sl","*","Keep acquisition cost under a third of lifetime value."],
+["Growth Marketing","Referral loops and K-factor","ac,en","d2c,saas","Referral loops lower blended CAC."],
+["Growth Marketing","70-20-10 budget rule","*","*","70% proven, 20% promising, 10% experiments."],
+["Growth Marketing","ICE prioritisation","*","*","Rank actions by impact, confidence and ease."],
+["CRM","Customer pyramid","rt","*","Serve top-value customers differently from the long tail."],
+["CRM","Loyalty types","rt","*","Turn spurious loyalty into true loyalty through attachment."],
+["CRM","Customer lifecycle","rt,ac","*","Acquire, onboard, retain, develop, win back."],
+["CRM","NPS, CSAT, CES","rt,br","*","Track satisfaction and effort to predict churn."],
+["CRM","Loyalty programme design","rt","d2c,ret,svc,loc","Set earn and burn rules, tiers and programme economics."],
+["Marketing Law and Ethics","ASCI influencer disclosure","aw,en,la","*","Label paid partnerships clearly."],
+["Marketing Law and Ethics","DPDP Act consent","ld,rt","*","Collect explicit consent before marketing to personal data."],
+["Marketing Law and Ethics","Dark patterns guidelines","sl","d2c,saas","Avoid false urgency, drip pricing and subscription traps."],
+["Marketing Law and Ethics","Greenwashing","br","*","Back every sustainability claim with proof."]
+];
+
+const GOALS={aw:"Brand awareness",ld:"Lead generation",sl:"Sales",ac:"Customer acquisition",rt:"Customer retention",la:"Product launch",ex:"Market expansion",br:"Brand building",en:"Engagement"};
+const MODELS={d2c:"D2C / e-commerce",b2b:"B2B / industrial",saas:"SaaS / subscription",svc:"Services",ret:"Retail / FMCG",loc:"Local business"};
+const STAGES={new:"New or pre-launch",growing:"Growing",established:"Established"};
+
+const CH={
+ search:{n:"Search ads",mvs:15000,f:"Conversion",c:"#2E6FD8",a:[["High-intent category keywords",55],["Brand keyword defence",15],["Competitor keywords",10],["Search remarketing",20]],k:["CTR","CPC","Conversion rate","CPA","ROAS"]},
+ seo:{n:"SEO and GEO content",mvs:10000,f:"Awareness to consideration",c:"#1F9E89",a:[["Commercial-intent landing pages",35],["Guides and informational content",30],["Structured data, FAQs, AI-answer readiness",20],["Digital PR and backlinks",15]],k:["Organic sessions","Keyword rankings","AI answer citations","Organic conversions"]},
+ meta:{n:"Social ads (Instagram, Facebook)",mvs:15000,f:"Awareness to conversion",c:"#C8553D",a:[["Prospecting audiences",50],["Retargeting viewers and cart abandoners",30],["Creative testing",20]],k:["CPM","CTR","Frequency","CPA","ROAS"]},
+ organic:{n:"Organic social and content",mvs:8000,f:"Awareness to engagement",c:"#D0679A",a:[["Short video production",50],["Community management",25],["Collecting customer content",25]],k:["Reach","Engagement rate","Saves and shares","Follower growth"]},
+ influencer:{n:"Influencers and creators",mvs:25000,f:"Awareness to consideration",c:"#7B61C9",a:[["Micro-creators (10K–100K)",60],["Nano creators and product seeding",25],["Usage rights to reuse as ads",15]],k:["Reach","Engagement rate","Promo-code sales","Cost per engagement"]},
+ video:{n:"YouTube and video",mvs:25000,f:"Awareness",c:"#3B8FB5",a:[["In-stream reach campaigns",50],["Shorts",30],["Remarketing to viewers",20]],k:["Views","View rate","Cost per view","Brand lift"]},
+ crm:{n:"Email, WhatsApp and CRM",mvs:5000,f:"Retention",c:"#5A8F29",a:[["Welcome and onboarding flow",25],["Abandoned-cart and lead nurture",35],["Repeat purchase and win-back",25],["Loyalty and referral",15]],k:["Open rate","Click-to-open","Repeat rate","Revenue per recipient"]},
+ marketplace:{n:"Marketplace and retail media",mvs:15000,f:"Conversion",c:"#E0A21A",a:[["Sponsored product ads",60],["Listing and A+ content",25],["Deal events",15]],k:["ROAS","Conversion rate","Search rank"]},
+ linkedin:{n:"LinkedIn ads and ABM",mvs:40000,f:"Consideration to lead",c:"#2B5C8A",a:[["Account-targeted sponsored content",45],["Thought-leadership posts",25],["Lead gen forms",30]],k:["Cost per lead","MQL rate","Account engagement"]},
+ events:{n:"Trade shows and events",mvs:150000,f:"Lead",c:"#8C6D46",a:[["Booth and collateral",55],["Pre-show outreach",20],["Post-show follow-up",25]],k:["Leads captured","Cost per lead","Meetings booked","Pipeline value"]},
+ sales:{n:"Sales enablement",mvs:20000,f:"Conversion",c:"#4E7C74",a:[["Case studies and TCO calculator",40],["Pitch deck and datasheets",30],["CRM and lead scoring",30]],k:["Win rate","Sales cycle length","SQL to deal rate"]},
+ offline:{n:"Offline: outdoor, print, radio",mvs:75000,f:"Awareness",c:"#A8483A",a:[["Local outdoor",45],["Print or radio in target cities",35],["Activations and sampling",20]],k:["Reach","Footfall","Branded search lift","Store sales"]},
+ local:{n:"Local search and Google Business Profile",mvs:5000,f:"Consideration to conversion",c:"#2F8A58",a:[["Profile optimisation and posts",30],["Review generation",35],["Local search ads",35]],k:["Map views","Calls","Direction requests","Reviews"]},
+ pr:{n:"PR and earned media",mvs:40000,f:"Awareness",c:"#B07A2A",a:[["Launch and news releases",40],["Founder and expert features",35],["Awards and industry mentions",25]],k:["Coverage","Share of voice","Referral traffic","Branded search"]},
+ trade:{n:"Trade and channel partners",mvs:30000,f:"Availability",c:"#6E5A9E",a:[["Dealer and distributor schemes",45],["Displays and shelf visibility",35],["Partner training",20]],k:["Numeric distribution","Sell-through","Stock availability"]},
+ foundation:{n:"Foundation: website, tracking, creative",mvs:0,f:"All stages",c:"#6B7A90",a:[["Landing pages and conversion optimisation",40],["Analytics and conversion tracking",20],["Creative production",40]],k:["Site conversion rate","Page speed","Tracking coverage"]},
+ test:{n:"Test-and-learn reserve",mvs:0,f:"All stages",c:"#A0A9B8",a:[["New channel or audience tests",60],["Creative and offer A/B tests",40]],k:["Tests run","Winning tests","Learnings logged"]}
+};
+const GW={
+ aw:{seo:8,meta:20,organic:10,influencer:18,video:18,pr:10,offline:12,search:4},
+ ld:{search:30,seo:15,meta:15,linkedin:12,crm:12,influencer:4,events:8,sales:4},
+ sl:{search:28,meta:25,marketplace:12,crm:12,seo:8,influencer:8,local:5},
+ ac:{search:25,meta:28,influencer:12,seo:10,crm:6,marketplace:8,video:6},
+ rt:{crm:50,organic:12,meta:12,search:6,seo:5,influencer:5},
+ la:{meta:22,influencer:18,video:15,pr:12,search:12,organic:8,offline:8,seo:5},
+ ex:{search:18,meta:18,trade:15,offline:12,influencer:10,seo:8,pr:8,local:6},
+ br:{video:20,influencer:15,pr:15,organic:12,meta:15,offline:13,seo:6},
+ en:{organic:30,influencer:25,meta:20,crm:10,video:10}
+};
+const MADD={b2b:{linkedin:10,sales:6,seo:4},saas:{linkedin:5,crm:4,seo:4},svc:{local:8,crm:4},ret:{trade:8,offline:4,local:4},loc:{local:12,offline:3},d2c:{marketplace:4}};
+const MMUL={
+ d2c:{marketplace:1.3,linkedin:0,events:0,sales:0,trade:.3,local:.3},
+ b2b:{linkedin:3,events:2.5,sales:3,seo:1.3,search:1.1,meta:.3,influencer:.2,marketplace:0,offline:.2,organic:.5,trade:1.2,video:.5,local:.2},
+ saas:{search:1.2,seo:1.5,linkedin:1.5,crm:1.2,marketplace:0,offline:.1,trade:0,events:.5,sales:1.2,local:0},
+ svc:{local:3,search:1.2,crm:1.2,marketplace:0,linkedin:.3,events:.3,trade:0,sales:.5},
+ ret:{offline:1.5,local:2,trade:1.5,marketplace:1.2,linkedin:0,events:.2,sales:.2},
+ loc:{local:4,search:1.3,offline:1.2,organic:1.2,marketplace:.2,linkedin:0,events:0,trade:0,video:.5,pr:.5,sales:0}
+};
+const EXCL=["search","seo","meta","organic","influencer","video","crm","marketplace","linkedin","events","offline","local","pr","trade"];
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const inr=n=>"₹"+Math.round(n).toLocaleString("en-IN");
+const inrShort=n=>{n=Math.round(n);if(n>=1e7)return"₹"+(n/1e7).toFixed(2).replace(/\.00$/,"")+" Cr";if(n>=1e5)return"₹"+(n/1e5).toFixed(2).replace(/\.00$/,"")+" L";return inr(n)};
+
+const goalsBox=$("#goals");
+Object.entries(GOALS).forEach(([k,v],i)=>{goalsBox.insertAdjacentHTML("beforeend",`<input type="radio" name="goal" id="g-${k}" value="${k}" ${k==="sl"?"checked":""}><label for="g-${k}">${v}</label>`)});
+const exBox=$("#exclude");
+EXCL.forEach(k=>exBox.insertAdjacentHTML("beforeend",`<input type="checkbox" name="ex" id="x-${k}" value="${k}"><label for="x-${k}">${esc(CH[k].n)}</label>`));
+
+function read(){
+  const f=$("#f"),g=n=>f.elements[n]?.value?.trim()??"";
+  return {name:g("name"),industry:g("industry"),model:g("model"),stage:g("stage"),products:g("products"),audience:g("audience"),
+    goal:(f.querySelector('input[name="goal"]:checked')||{}).value||"sl",budget:+g("budget")||0,months:+g("months")||3,geo:g("geo"),comp:g("comp"),
+    aov:+g("aov")||0,margin:+g("margin")||0,orders:+g("orders")||0,target:+g("target")||0,current:g("current"),
+    exclude:[...f.querySelectorAll('input[name="ex"]:checked')].map(x=>x.value)};
+}
+function saveDraft(){try{localStorage.setItem("mpb-draft",JSON.stringify(read()))}catch(e){}}
+function loadDraft(){try{const d=JSON.parse(localStorage.getItem("mpb-draft")||"null");if(!d)return;const f=$("#f");
+  ["name","industry","model","stage","products","audience","budget","months","geo","comp","aov","margin","orders","target","current"].forEach(k=>{if(d[k]!==undefined&&d[k]!==0&&d[k]!==""&&f.elements[k])f.elements[k].value=d[k]});
+  if(d.goal){const r=$("#g-"+d.goal);if(r)r.checked=true}
+  (d.exclude||[]).forEach(k=>{const c=$("#x-"+k);if(c)c.checked=true});}catch(e){}}
+loadDraft();
+function syncAovLabel(){$("#aovl").textContent=($("#model").value==="b2b")?"Average deal value (₹)":"Average order value (₹)"}
+syncAovLabel();$("#model").addEventListener("change",syncAovLabel);
+$("#f").addEventListener("input",saveDraft);
+
+function allocate(inp,budget){
+  const monthly=budget/inp.months;
+  const w={...GW[inp.goal]};
+  Object.entries(MADD[inp.model]||{}).forEach(([c,v])=>w[c]=(w[c]||0)+v);
+  Object.entries(MMUL[inp.model]||{}).forEach(([c,m])=>{if(w[c]!=null)w[c]*=m});
+  inp.exclude.forEach(c=>delete w[c]);
+  Object.keys(w).forEach(c=>{if(!(w[c]>0))delete w[c]});
+  let fP={new:.15,growing:.10,established:.06}[inp.stage],tP=.10;
+  if(monthly<30000){tP=.05;fP=Math.min(fP,.10)}
+  const media=1-fP-tP;
+  let list=Object.entries(w).sort((a,b)=>b[1]-a[1]);
+  const maxN=monthly<50000?3:monthly<200000?5:monthly<1000000?7:9;
+  list=list.slice(0,maxN);
+  if(inp.goal==="rt"&&!inp.exclude.includes("crm")&&!list.find(x=>x[0]==="crm"))list.push(["crm",w.crm||20]);
+  const dropped=[];
+  for(let guard=0;guard<20&&list.length>1;guard++){
+    const tot=list.reduce((s,x)=>s+x[1],0);
+    const low=list.map(x=>({c:x[0],m:media*monthly*x[1]/tot})).filter(x=>x.m<CH[x.c].mvs).sort((a,b)=>a.m-b.m)[0];
+    if(!low)break;
+    dropped.push(low.c);list=list.filter(x=>x[0]!==low.c);
+  }
+  const tot=list.reduce((s,x)=>s+x[1],0)||1;
+  const rows=list.map(([c,v])=>({c,share:media*v/tot}));
+  rows.push({c:"foundation",share:fP},{c:"test",share:tP});
+  const floors=rows.map(r=>Math.floor(r.share*100));let rem=100-floors.reduce((a,b)=>a+b,0);
+  rows.map((r,i)=>({i,f:r.share*100-floors[i]})).sort((a,b)=>b.f-a.f).forEach(x=>{if(rem>0){floors[x.i]++;rem--}});
+  rows.forEach((r,i)=>{r.pct=floors[i];r.amt=r.share*budget;r.mo=r.share*monthly});
+  return {rows,dropped,monthly,fP,tP};
+}
+
+function economics(inp,budget){
+  if(!(inp.aov>0&&inp.margin>0))return null;
+  const m=inp.margin/100,contrib=inp.aov*m,beRoas=1/m;
+  const clv=inp.orders>0?contrib*inp.orders:null;
+  const maxCac=clv?clv/3:null;
+  const ordersNeeded=inp.target>0?inp.target/inp.aov:null;
+  const spendPerOrder=ordersNeeded?budget/ordersNeeded:null;
+  const reqRoas=inp.target>0?inp.target/budget:null;
+  return {m,contrib,beRoas,clv,maxCac,ordersNeeded,spendPerOrder,reqRoas};
+}
+
+function phases(inp,budget,rows){
+  const M=inp.months;const top=rows.filter(r=>!["foundation","test"].includes(r.c)).slice(0,2).map(r=>CH[r.c].n);
+  const gname=GOALS[inp.goal].toLowerCase();
+  if(M<3)return[{t:"Launch, learn and adjust",when:M===1?"Month 1":"Months 1–"+M,amt:budget,items:["Set up tracking, landing pages and creative before spend goes live.","Run "+top.join(" and ")+" with 2–3 creative and audience variants each.","Review weekly; move money toward the variant closest to your "+gname+" target.","A short period leaves little learning time, so treat results as directional."]}];
+  const p1=Math.max(1,Math.round(M*.25)),p3=Math.max(1,Math.round(M*.35)),p2=Math.max(1,M-p1-p3);
+  const r=(a,b)=>a===b?"Month "+a:"Months "+a+"–"+b;
+  return[
+   {t:"Foundation and testing",when:r(1,p1),amt:budget*.25,items:["Fix tracking: every channel reports to one set of conversion events.","Build landing pages and creative; write the positioning statement first.","Test "+top.join(" and ")+" with small budgets across audiences and messages.","Spend most of the test reserve here."]},
+   {t:"Optimise",when:r(p1+1,p1+p2),amt:budget*.35,items:["Cut ad sets and creatives below break-even; keep the top third.","Launch retargeting and nurture flows for people who engaged but didn't act.","Fix the stage with the biggest funnel drop before adding traffic."]},
+   {t:"Scale what works",when:r(p1+p2+1,M),amt:budget*.40,items:["Raise budget on winning channels in 20–30% steps and watch for rising CPA (diminishing returns).","Expand winning creative into new formats and audiences.","Shift retained budget into retention and referral to lift lifetime value."]}
+  ];
+}
+
+function checks(inp,al,eco){
+  const o=[];
+  if(al.monthly<30000)o.push(["warn","At "+inr(al.monthly)+" a month the plan concentrates on few channels. Spreading thin means no channel gets enough data to learn."]);
+  if(al.dropped.length)o.push(["ok","Left out at this budget: "+al.dropped.map(c=>CH[c].n).join(", ")+". Each needs a minimum monthly spend to produce reliable results."]);
+  if(eco){
+    if(eco.reqRoas&&eco.reqRoas<eco.beRoas)o.push(["warn","Your revenue target needs a ROAS of "+eco.reqRoas.toFixed(1)+", below your break-even ROAS of "+eco.beRoas.toFixed(1)+". Hitting the target on this budget would lose money on paid media unless repeat purchases make up the gap."]);
+    if(eco.reqRoas&&eco.reqRoas>=eco.beRoas*2.5)o.push(["warn","Your target needs a ROAS of "+eco.reqRoas.toFixed(1)+" across all spend. That is ambitious; confirm with a small test before committing the full budget."]);
+    if(eco.maxCac&&eco.spendPerOrder&&eco.spendPerOrder>eco.maxCac)o.push(["warn","The budget works out to "+inr(eco.spendPerOrder)+" per order against a maximum affordable CAC of "+inr(eco.maxCac)+" (CLV ÷ 3). Either raise order value, improve repeat rate, or lower the target."]);
+    if(eco.m<.25&&["sl","ac"].includes(inp.goal))o.push(["warn","With a "+inp.margin+"% margin, break-even ROAS is "+eco.beRoas.toFixed(1)+". Paid acquisition is hard at this margin; weight effort toward order value and repeat purchase."]);
+  }else o.push(["ok","Add order value and margin under 'Numbers that sharpen the plan' to get break-even ROAS, affordable CAC and a reality check on your target."]);
+  if(inp.stage==="new"&&["sl","ac"].includes(inp.goal))o.push(["ok","New brands selling straight away face high perceived risk. Reviews, guarantees and creator proof matter more than discounts."]);
+  if(inp.goal==="rt"&&!inp.orders)o.push(["ok","For retention, add purchases per customer so the plan can size the value of each retained customer."]);
+  if(inp.months===1)o.push(["ok","One month is short for ad platforms to exit their learning phase. Judge results on trend, not final numbers."]);
+  return o;
+}
+
+function kbFor(inp){
+  return KB.filter(r=>(r[2]==="*"||r[2].split(",").includes(inp.goal))&&(r[3]==="*"||r[3].split(",").includes(inp.model)))
+   .map(r=>({s:r[0],c:r[1],a:r[4],sc:(r[2]!=="*"?2:0)+(r[3]!=="*"?1:0)})).sort((a,b)=>b.sc-a.sc);
+}
+
+let state={inp:null,budget:0,al:null,eco:null,ph:null,ai:null,kb:null};
+let sampleFn=null,downloadsFn=null,aiCtl=null;
+
+
+$("#f").addEventListener("submit",e=>{
+  e.preventDefault();const inp=read();const err=$("#err");
+  if(!inp.name||!inp.industry){err.textContent="Enter the company name and industry.";return}
+  if(!(inp.budget>=1000)){err.textContent="Enter a total budget of at least ₹1,000.";return}
+  err.textContent="";
+  state.inp=inp;state.budget=inp.budget;state.ai=null;
+  render();
+  $("#out").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth",block:"start"});
+  if(sampleFn)runAI(false);
+});
+
+function compute(){
+  const {inp,budget}=state;
+  state.al=allocate(inp,budget);state.eco=economics(inp,budget);state.ph=phases(inp,budget,state.al.rows);state.kb=kbFor(inp);
+}
+
+function render(){
+  compute();const {inp,budget,al}=state;
+  $("#out").innerHTML=`
+  <section class="panel" id="alloc-sec">
+    <h2>Where to invest</h2>
+    <div class="total"><span class="big" id="tot">${inrShort(budget)}</span><span class="muted" id="permo">${inr(al.monthly)} a month for ${inp.months} month${inp.months>1?"s":""}</span></div>
+    <div class="chips"><span class="chip">${esc(GOALS[inp.goal])}</span><span class="chip">${esc(MODELS[inp.model])}</span><span class="chip">${esc(STAGES[inp.stage])}</span>${inp.geo?`<span class="chip">${esc(inp.geo)}</span>`:""}</div>
+    <div class="rupeebar" id="bar" role="img" aria-label="Budget split by channel"></div>
+    <div class="whatif"><label for="wi" style="margin:0;font-weight:500">What if the budget changes?</label><input type="range" id="wi" min="50" max="200" step="5" value="100"><span id="wio" style="min-width:48px;color:var(--ink);font-weight:600">100%</span></div>
+    <div class="tablewrap"><table class="alloc"><thead><tr><th>Channel</th><th>Role</th><th class="num">Share</th><th class="num">Total</th><th class="num">Per month</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <p class="small muted">Split set by rules for your goal, model, stage and budget size. Tap a channel to see the activities and the KPIs to judge it on.</p>
+  </section>
+  <section class="panel" id="eco-sec"></section>
+  <section class="panel"><h2>Roadmap</h2><div id="ph"></div></section>
+  <section class="panel"><h2>Checks on your inputs</h2><div class="checks" id="chk"></div></section>
+  <section class="panel"><h2>Frameworks behind this plan</h2><div class="kb" id="kb"></div></section>
+  <section class="panel"><div class="bar-actions"><button type="button" id="dl">Download plan (.md)</button><button type="button" id="cp">Copy plan as text</button><span class="small muted" id="cpo" role="status"></span></div></section>`;
+  paintAlloc();paintRest();renderAIShell();
+  $("#wi").addEventListener("input",e=>{const p=+e.target.value;$("#wio").textContent=p+"%";state.budget=Math.round(state.inp.budget*p/100/100)*100;compute();paintAlloc();paintRest();if(state.ai)paintAI()});
+  $("#dl").addEventListener("click",download);
+  $("#cp").addEventListener("click",()=>{const t=toMarkdown();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>$("#cpo").textContent="Copied").catch(()=>$("#cpo").textContent="Copy isn't available here; use download instead.")});
+}
+
+function paintAlloc(){
+  const {al,budget,inp}=state;
+  $("#tot").textContent=inrShort(budget);$("#permo").textContent=inr(al.monthly)+" a month for "+inp.months+" month"+(inp.months>1?"s":"");
+  $("#bar").innerHTML=al.rows.map(r=>`<span title="${esc(CH[r.c].n)} ${r.pct}%" style="flex-grow:${r.share};background:${CH[r.c].c}"></span>`).join("");
+  $("#rows").innerHTML=al.rows.map((r,i)=>{const ch=CH[r.c];return`<tr><td><span class="sw" style="background:${ch.c}"></span><button type="button" class="rowbtn" aria-expanded="false" aria-controls="a${i}" data-i="${i}">${esc(ch.n)}</button>
+   <div class="acts" id="a${i}" hidden>${ch.a.map(a=>`<div><span>${esc(a[0])}</span><span>${inr(r.amt*a[1]/100)}</span></div>`).join("")}<div class="k">Judge on: ${ch.k.join(", ")}</div></div></td>
+   <td class="small muted">${esc(ch.f)}</td><td class="num">${r.pct}%</td><td class="num">${inr(r.amt)}</td><td class="num">${inr(r.mo)}</td></tr>`}).join("");
+  document.querySelectorAll(".rowbtn").forEach(b=>b.addEventListener("click",()=>{const x=b.getAttribute("aria-expanded")==="true";b.setAttribute("aria-expanded",!x);$("#a"+b.dataset.i).hidden=x}));
+}
+
+function paintRest(){
+  const {eco,ph,inp,al,budget}=state;
+  const es=$("#eco-sec");
+  if(eco){
+    const s=[];
+    s.push(["Break-even ROAS",eco.beRoas.toFixed(2),"Revenue per ₹1 of ads needed to cover product cost"]);
+    s.push(["Contribution per order",inr(eco.contrib),"Order value × margin"]);
+    if(eco.clv)s.push(["Customer lifetime value",inr(eco.clv),"Contribution × lifetime purchases"]);
+    if(eco.maxCac)s.push(["Max affordable CAC",inr(eco.maxCac),"CLV ÷ 3, the 3:1 rule"]);
+    if(eco.ordersNeeded)s.push([inp.model==="b2b"?"Deals needed":"Orders needed",Math.ceil(eco.ordersNeeded).toLocaleString("en-IN"),"Revenue target ÷ order value"]);
+    if(eco.reqRoas)s.push(["ROAS your target needs",eco.reqRoas.toFixed(2),"Revenue target ÷ total budget"]);
+    es.innerHTML=`<h2>Your spending limits</h2><div class="cols">${s.map(x=>`<div class="stat"><div class="l">${x[0]}</div><div class="v">${x[1]}</div><div class="l">${x[2]}</div></div>`).join("")}</div><p class="small muted">Calculated only from the numbers you entered. Use break-even ROAS and max CAC as the pass/fail line for every channel above.</p>`;
+  }else es.innerHTML=`<h2>Your spending limits</h2><p class="muted">Add average order value and gross margin to see break-even ROAS, lifetime value and the most you can pay per customer.</p>`;
+  $("#ph").innerHTML=ph.map((p,i)=>`<div class="phase ${i===0?"on":""}"><h3>${esc(p.t)}</h3><div class="when">${esc(p.when)} · about ${inr(p.amt)}</div><ul>${p.items.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`).join("");
+  $("#chk").innerHTML=checks(inp,al,eco).map(c=>`<div class="${c[0]}">${esc(c[1])}</div>`).join("");
+  const g={};state.kb.slice(0,24).forEach(k=>{(g[k.s]=g[k.s]||[]).push(k)});
+  $("#kb").innerHTML=Object.entries(g).map(([s,arr])=>`<div class="grp"><b>${esc(s)}</b>${arr.map(k=>`<p><strong>${esc(k.c)}.</strong> ${esc(k.a)}</p>`).join("")}</div>`).join("");
+}
+
+function renderAIShell(){
+  const sec=$("#ai-sec");if(!sec)return;
+  if(!sampleFn){sec.innerHTML=`<h2>Written strategy</h2><p class="muted">The written strategy needs Claude, which isn't available in this view. The budget split, limits, roadmap and frameworks above work without it.</p>`;return}
+  if(state.ai){paintAI();return}
+  if(!aiCtl)sec.innerHTML=`<h2>Written strategy</h2><p class="muted">Claude can write the situation analysis, SWOT, positioning, marketing mix, campaign ideas, KPIs and risks for this plan.</p><button type="button" id="aigo">Write the strategy</button>`;
+  const b=$("#aigo");if(b)b.addEventListener("click",()=>runAI(false));
+}
+
+function buildPrompt(){
+  const {inp,al,eco,budget}=state;
+  const alloc=al.rows.map(r=>`- ${CH[r.c].n}: ${inr(r.amt)} (${r.pct}%), role: ${CH[r.c].f}`).join("\n");
+  const e=eco?[`Break-even ROAS ${eco.beRoas.toFixed(2)}`,`Contribution per order ${inr(eco.contrib)}`,eco.clv?`CLV ${inr(eco.clv)}`:"",eco.maxCac?`Max affordable CAC ${inr(eco.maxCac)}`:"",eco.ordersNeeded?`Orders needed ${Math.ceil(eco.ordersNeeded)}`:"",eco.reqRoas?`ROAS needed for target ${eco.reqRoas.toFixed(2)}`:""].filter(Boolean).join("; "):"Not provided";
+  const kb=state.kb.slice(0,32).map(k=>`- ${k.s}: ${k.c}: ${k.a}`).join("\n");
+  const mix=["svc","loc"].includes(inp.model)?"7Ps (Product, Price, Place, Promotion, People, Process, Physical evidence)":"4Ps (Product, Price, Place, Promotion)";
+  return `You are a senior marketing strategist writing a marketing plan.
+Rules:
+- Use only the facts given below. Do not invent market sizes, statistics, competitor facts or customer data. Where information is missing, say what data is needed.
+- The budget allocation was computed by a planning engine. Do not change any rupee amounts or percentages. Explain and apply it.
+- Ground recommendations in the frameworks listed and name the framework you used.
+- Write in plain, direct English. Keep each string under 45 words.
+
+COMPANY
+Name: ${inp.name}
+Industry: ${inp.industry}
+Business model: ${MODELS[inp.model]}
+Stage: ${STAGES[inp.stage]}
+Products or services: ${inp.products||"not given"}
+Target audience: ${inp.audience||"not given"}
+Primary goal: ${GOALS[inp.goal]}
+Budget: ${inr(budget)} over ${inp.months} month(s)
+Geography: ${inp.geo||"not given"}
+Competitors: ${inp.comp||"not given"}
+Current activity: ${inp.current||"not given"}
+
+ALLOCATION
+${alloc}
+
+ECONOMICS
+${e}
+
+FRAMEWORKS TO APPLY
+${kb}
+
+Reply with only one JSON object of exactly this shape:
+{"executive_summary":"3-4 sentences","objective":"one objective using only the numbers given, or state which target to set","situation":{"company":"","customers":"","competitors":"","collaborators":"","context":""},"swot":{"strengths":[""],"weaknesses":[""],"opportunities":[""],"threats":[""]},"stp":{"segments":[""],"target":"","positioning_statement":""},"marketing_mix":[{"p":"","plan":""}],"messaging":{"big_idea":"","key_messages":[""],"proof_points":[""]},"campaigns":[{"name":"","channel":"","idea":"","timing":"","framework":""}],"channel_rationale":[{"channel":"","why":""}],"kpis":[{"kpi":"","target":"","why":""}],"risks":[{"risk":"","mitigation":""}],"data_needed":[""]}
+Use the ${mix} for marketing_mix. Up to 4 items per list, 3-5 campaigns, one channel_rationale entry per paid channel in the allocation.`;
+}
+
+async function runAI(fresh){
+  if(!sampleFn)return;
+  if(aiCtl)aiCtl.abort();
+  const ctl=new AbortController();aiCtl=ctl;
+  const sec=$("#ai-sec");
+  sec.innerHTML=`<h2>Written strategy</h2><div class="ai-status"><span class="pulse" aria-hidden="true"></span><span id="aip">Thinking through your plan…</span><button type="button" id="aistop">Stop</button></div>`;
+  $("#aistop").addEventListener("click",()=>ctl.abort());
+  try{
+    const res=await sampleFn.json(buildPrompt(),{signal:ctl.signal,modelTier:"default",cache:fresh?false:true,onText:({text})=>{const p=$("#aip");if(p)p.textContent="Writing… "+Math.round(text.length/100)/10+"k characters"}});
+    if(aiCtl!==ctl)return;
+    state.ai=res&&typeof res==="object"?res:null;aiCtl=null;
+    if(!state.ai)throw{code:"invalid_json"};
+    paintAI();
+  }catch(e){
+    if(aiCtl!==ctl)return;aiCtl=null;
+    const code=e&&e.code;
+    const msg={cancelled:"Stopped. The rest of the plan is still valid.",not_granted:"Claude wasn't allowed for this page, so the written strategy is off. Everything else still works.",sampling_disabled:"Claude isn't available on this account.",rate_limited:"Too many requests just now. Try again in a minute.",invalid_json:"The strategy came back in the wrong shape. Try again.",session_expired:"Your session expired. Sign in again, then retry."}[code]||"The strategy couldn't be written this time. Try again.";
+    if(["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"].includes(code)){sampleFn=null;sec.innerHTML=`<h2>Written strategy</h2><p class="muted">${esc(msg)}</p>`;return}
+    sec.innerHTML=`<h2>Written strategy</h2><p class="muted">${esc(msg)}</p><button type="button" id="aigo">Write the strategy</button>`;
+    $("#aigo").addEventListener("click",()=>runAI(true));
+  }
+}
+
+const arr=x=>Array.isArray(x)?x.filter(Boolean):[];
+const ul=a=>arr(a).length?`<ul>${arr(a).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:"";
+function paintAI(){
+  const a=state.ai,sec=$("#ai-sec");if(!a||!sec)return;
+  const sit=a.situation||{},sw=a.swot||{},stp=a.stp||{},ms=a.messaging||{};
+  sec.innerHTML=`<h2>Written strategy</h2>
+  <p>${esc(a.executive_summary)}</p>
+  ${a.objective?`<h3>Objective</h3><p>${esc(a.objective)}</p>`:""}
+  <h3>Situation (5Cs)</h3><table class="mini">${[["Company",sit.company],["Customers",sit.customers],["Competitors",sit.competitors],["Collaborators",sit.collaborators],["Context",sit.context]].filter(x=>x[1]).map(x=>`<tr><td>${x[0]}</td><td>${esc(x[1])}</td></tr>`).join("")}</table>
+  <h3>SWOT</h3><div class="cols"><div><b class="small">Strengths</b>${ul(sw.strengths)}</div><div><b class="small">Weaknesses</b>${ul(sw.weaknesses)}</div><div><b class="small">Opportunities</b>${ul(sw.opportunities)}</div><div><b class="small">Threats</b>${ul(sw.threats)}</div></div>
+  <h3>Segmentation, targeting, positioning</h3>${ul(stp.segments)}${stp.target?`<p><b>Target:</b> ${esc(stp.target)}</p>`:""}${stp.positioning_statement?`<p class="pos">${esc(stp.positioning_statement)}</p>`:""}
+  <h3>Marketing mix</h3><table class="mini">${arr(a.marketing_mix).map(m=>`<tr><td>${esc(m.p)}</td><td>${esc(m.plan)}</td></tr>`).join("")}</table>
+  <h3>Messaging</h3>${ms.big_idea?`<p class="pos">${esc(ms.big_idea)}</p>`:""}${ul(ms.key_messages)}${arr(ms.proof_points).length?`<p class="small muted">Proof points</p>${ul(ms.proof_points)}`:""}
+  <h3>Campaign ideas</h3><table class="mini">${arr(a.campaigns).map(c=>`<tr><td>${esc(c.name)}<div class="small muted">${esc(c.channel)} · ${esc(c.timing)}</div></td><td>${esc(c.idea)}${c.framework?`<div class="small muted">${esc(c.framework)}</div>`:""}</td></tr>`).join("")}</table>
+  <h3>Why these channels</h3><table class="mini">${arr(a.channel_rationale).map(c=>`<tr><td>${esc(c.channel)}</td><td>${esc(c.why)}</td></tr>`).join("")}</table>
+  <h3>KPIs</h3><table class="mini">${arr(a.kpis).map(k=>`<tr><td>${esc(k.kpi)}<div class="small muted">${esc(k.target)}</div></td><td>${esc(k.why)}</td></tr>`).join("")}</table>
+  <h3>Risks</h3><table class="mini">${arr(a.risks).map(r=>`<tr><td>${esc(r.risk)}</td><td>${esc(r.mitigation)}</td></tr>`).join("")}</table>
+  ${arr(a.data_needed).length?`<h3>Data that would improve this plan</h3>${ul(a.data_needed)}`:""}
+  <p class="small muted">Written by Claude from your inputs. The strategy reflects the original budget; if you moved the what-if slider, the rupee figures above are the current ones.</p>
+  <button type="button" id="aire">Rewrite the strategy</button>`;
+  $("#aire").addEventListener("click",()=>runAI(true));
+}
+
+function toMarkdown(){
+  const {inp,al,eco,ph,ai,budget}=state;const L=[];
+  L.push(`# Marketing plan: ${inp.name}`,``,`${inp.industry} · ${MODELS[inp.model]} · ${STAGES[inp.stage]} · Goal: ${GOALS[inp.goal]}`,`Budget: ${inr(budget)} over ${inp.months} month(s) (${inr(al.monthly)} a month)`,``,`## Budget allocation`,``,`| Channel | Share | Total | Per month |`,`|---|---|---|---|`);
+  al.rows.forEach(r=>L.push(`| ${CH[r.c].n} | ${r.pct}% | ${inr(r.amt)} | ${inr(r.mo)} |`));
+  L.push(``,`## Activities by channel`);
+  al.rows.forEach(r=>{L.push(``,`### ${CH[r.c].n} (${inr(r.amt)})`);CH[r.c].a.forEach(a=>L.push(`- ${a[0]}: ${inr(r.amt*a[1]/100)}`));L.push(`- Judge on: ${CH[r.c].k.join(", ")}`)});
+  if(eco){L.push(``,`## Spending limits`,`- Break-even ROAS: ${eco.beRoas.toFixed(2)}`,`- Contribution per order: ${inr(eco.contrib)}`);if(eco.clv)L.push(`- CLV: ${inr(eco.clv)}`);if(eco.maxCac)L.push(`- Max affordable CAC: ${inr(eco.maxCac)}`);if(eco.reqRoas)L.push(`- ROAS needed for target: ${eco.reqRoas.toFixed(2)}`)}
+  L.push(``,`## Roadmap`);ph.forEach(p=>{L.push(``,`### ${p.t} (${p.when}, about ${inr(p.amt)})`);p.items.forEach(t=>L.push(`- ${t}`))});
+  L.push(``,`## Checks`);checks(inp,al,eco).forEach(c=>L.push(`- ${c[1]}`));
+  if(ai){const s=ai.situation||{},w=ai.swot||{},st=ai.stp||{},m=ai.messaging||{};
+    L.push(``,`## Strategy`,``,ai.executive_summary||"");if(ai.objective)L.push(``,`**Objective:** ${ai.objective}`);
+    L.push(``,`### Situation (5Cs)`);Object.entries(s).forEach(([k,v])=>v&&L.push(`- ${k}: ${v}`));
+    L.push(``,`### SWOT`);[["Strengths",w.strengths],["Weaknesses",w.weaknesses],["Opportunities",w.opportunities],["Threats",w.threats]].forEach(([k,v])=>{L.push(`**${k}**`);arr(v).forEach(t=>L.push(`- ${t}`))});
+    L.push(``,`### STP`);arr(st.segments).forEach(t=>L.push(`- ${t}`));if(st.target)L.push(`Target: ${st.target}`);if(st.positioning_statement)L.push(`Positioning: ${st.positioning_statement}`);
+    L.push(``,`### Marketing mix`);arr(ai.marketing_mix).forEach(x=>L.push(`- ${x.p}: ${x.plan}`));
+    L.push(``,`### Messaging`);if(m.big_idea)L.push(`Big idea: ${m.big_idea}`);arr(m.key_messages).forEach(t=>L.push(`- ${t}`));
+    L.push(``,`### Campaigns`);arr(ai.campaigns).forEach(c=>L.push(`- ${c.name} (${c.channel}, ${c.timing}): ${c.idea}`));
+    L.push(``,`### KPIs`);arr(ai.kpis).forEach(k=>L.push(`- ${k.kpi}: ${k.target}. ${k.why}`));
+    L.push(``,`### Risks`);arr(ai.risks).forEach(r=>L.push(`- ${r.risk}: ${r.mitigation}`));}
+  L.push(``,`## Frameworks applied`);state.kb.slice(0,24).forEach(k=>L.push(`- ${k.s}: ${k.c}. ${k.a}`));
+  return L.join("\n");
+}
+function download(){
+  const o=$("#cpo");
+  try{
+    const name=(state.inp.name||"marketing").replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"-").toLowerCase()+"-marketing-plan.md";
+    const url=URL.createObjectURL(new Blob([toMarkdown()],{type:"text/markdown"}));
+    const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);o.textContent="Downloaded";
+  }catch(e){o.textContent="Download failed; use copy instead."}
+}
+</script>
+</body>
+</html>
