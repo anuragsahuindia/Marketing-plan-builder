@@ -651,6 +651,7 @@ function allocate(inp,budget){
         else if(cpc>eco0.maxCac){t+=`; ${inr(cpc)} per customer is slightly above your ${inr(eco0.maxCac)} limit, so it stays at its current spend until conversion improves`;if(a.spend){floor[c]=a.spend;cap[c]=a.spend}}
         else{t+=`; ${inr(cpc)} per customer, within your ${inr(eco0.maxCac)} limit`;if(a.spend)floor[c]=a.spend}
       }else if(a.spend)floor[c]=a.spend;
+      if(!a.cust&&a.res)t+=" (directional: enquiry volume, not proven customer cost)";
       ev[c]=t;
     }else if(a.spend>0){w[c]=(w[c]||0)*.5;ev[c]=`your data: no results yet from ${inr(a.spend)} a month, so it's reduced until that's fixed`}
   });
@@ -677,18 +678,36 @@ function allocate(inp,budget){
   // keep at least current spend for channels that work
   const fl=rows.filter(r=>floor[r.c]).map(r=>({r,need:floor[r.c]/monthly}));
   const needSum=fl.reduce((s,x)=>s+x.need,0);
-  if(fl.length){const k=needSum>media*.9?media*.9/needSum:1;
-    fl.forEach(x=>{const nd=x.need*k;if(x.r.share<nd||cap[x.r.c]){x.r.share=nd;x.r.kept=true}});
-    const fixed=rows.filter(r=>r.kept).reduce((s,r)=>s+r.share,0);const rest=rows.filter(r=>!r.kept);const restSum=rest.reduce((s,r)=>s+r.share,0);
-    if(restSum>0)rest.forEach(r=>r.share=r.share/restSum*Math.max(0,media-fixed));
-    else{const f2=media/fixed;rows.forEach(r=>r.share*=f2)}}
-  rows.forEach(r=>{const w0=[...new Set(why[r.c]||[])].slice(0,2);r.why=r.ev?[r.ev,...w0.slice(0,1)]:w0;if(r.kept&&!cap[r.c])r.why.push("keeps at least your current "+inr(floor[r.c])+" a month");
+  let scaledDown=false;
+  if(fl.length){const k=needSum>media*.9?media*.9/needSum:1;scaledDown=k<1;
+    fl.forEach(x=>{x.nd=x.need*k;x.r.floorShare=x.nd;if(cap[x.r.c])x.r.capShare=x.nd});
+    for(let it=0;it<6;it++){
+      rows.forEach(r=>{if(r.capShare!=null)r.share=r.capShare;else if(r.floorShare!=null&&r.share<r.floorShare)r.share=r.floorShare});
+      const locked=rows.filter(r=>r.capShare!=null||(r.floorShare!=null&&r.share<=r.floorShare+1e-9));
+      const fixed=locked.reduce((s,r)=>s+r.share,0);const free=rows.filter(r=>!locked.includes(r));const fs=free.reduce((s,r)=>s+r.share,0);
+      if(!free.length||fs<=0){const f2=media/fixed;rows.forEach(r=>r.share*=f2);break}
+      free.forEach(r=>r.share=r.share/fs*Math.max(0,media-fixed));
+      if(free.every(r=>r.floorShare==null||r.share>=r.floorShare-1e-9))break;
+    }
+    rows.forEach(r=>{if(r.floorShare!=null&&r.share<=r.floorShare+1e-6)r.kept=true});}
+  rows.forEach(r=>{const w0=[...new Set(why[r.c]||[])].slice(0,2);r.why=r.ev?[r.ev,...w0.slice(0,1)]:w0;if(r.kept&&!cap[r.c])r.why.push(scaledDown?`cut in proportion with your other paid channels, because the plan budget is below what you spend now (${inr(floor[r.c])} a month)`:"keeps at least your current "+inr(floor[r.c])+" a month");
     const m=mv(r.c);if(m>0)r.why.push("clears the "+inr(m)+"/month minimum to learn")});
   rows.push({c:"foundation",share:fP,why:["tracking, page and creative that every channel depends on"]},{c:"test",share:tP,why:["reserve for new ideas (the 70-20-10 rule)"]});
+
+  // ---- fit to cost limit (user-applied) ----
+  let fit=null;const F=state._previewing?null:state.fit;
+  if(F&&F.mode==="reassign"&&F.acq>0){
+    const acqRows=rows.filter(r=>!["foundation","test","crm"].includes(r.c));const acqAmt=acqRows.reduce((s,r)=>s+r.share,0)*budget;
+    if(acqAmt>F.acq){const k=F.acq/acqAmt;const moved=(1-k)*acqRows.reduce((s,r)=>s+r.share,0);acqRows.forEach(r=>{r.share*=k;r.why.push("capped so acquisition stays within your cost limit")});
+      const dest=rows.filter(r=>["foundation","crm","test"].includes(r.c));const wts={foundation:.4,crm:.3,test:.3};const tw=dest.reduce((s,r)=>s+wts[r.c],0);
+      dest.forEach(r=>{r.share+=moved*wts[r.c]/tw;r.why.push("receives budget moved out of acquisition: non-acquisition spend (infrastructure, follow-up, testing)")});
+      fit={mode:"reassign",moved:moved*budget,acq:F.acq}}
+  }
+  rows.forEach(r=>{r.acq=!["foundation","test","crm"].includes(r.c)});
   const floors=rows.map(r=>Math.floor(r.share*100));let rem=100-floors.reduce((a,b)=>a+b,0);
   rows.map((r,i)=>({i,f:r.share*100-floors[i]})).sort((a,b)=>b.f-a.f).forEach(x=>{if(rem>0){floors[x.i]++;rem--}});
   rows.forEach((r,i)=>{r.pct=floors[i];r.amt=r.share*budget;r.mo=r.share*monthly});
-  return {rows,dropped:dropped.filter(c=>!sel.find(x=>x[0]===c)),monthly,fP,tP,prot:[...prot]};
+  return {rows,dropped:dropped.filter(c=>!sel.find(x=>x[0]===c)),monthly,fP,tP,prot:[...prot],scaledDown,fit};
 }
 const PAID=["search","meta","video","linkedin","marketplace","offline"];
 function decideRule(r){
@@ -757,8 +776,9 @@ function funnel(inp,budget,eco){
     for(let i=J.rev+1;i<st.length;i++)st[i].c=st[i-1].c*R[i-1].v;
   }
   const reach=st[0].c;
-  return {J,st,units,basis,R,anyAssumed:R.some(r=>r.src==="assumption"),
-    costPer1000:reach?budget/reach*1000:null,costPerUnit:units?budget/units:null};
+  const acqSpend=state.al&&state.al.fit&&state.al.fit.mode==="reassign"?state.al.rows.filter(r=>r.acq).reduce((s,r)=>s+r.amt,0):budget;
+  return {J,st,units,basis,R,anyAssumed:R.some(r=>r.src==="assumption"),acqSpend,cpuLabel:acqSpend<budget?"acquisition spend":"total budget",
+    costPer1000:reach?budget/reach*1000:null,costPerUnit:units?acqSpend/units:null};
 }
 function execSummary(inp,al,eco,fn){
   const media=al.rows.filter(r=>!["foundation","test"].includes(r.c));
@@ -777,7 +797,8 @@ function execSummary(inp,al,eco,fn){
   else risk="Scaling too fast into diminishing returns.";
   const w1=WTASK[FAM(inp.goal)][0].split(". ")[0].replace(/\.$/,"")+".";
   const posStmt=positioning(inp);
-  const feas=CF.length?`Not feasible as entered: ${CF.length} conflict${CF.length>1?"s":""} to resolve`:(eco?"No conflicts found on the numbers given":"Not checked: add economics in step 3");
+  const fin=CF.filter(c=>["cac","be","reach"].includes(c.id)),oth=CF.filter(c=>!["cac","be","reach"].includes(c.id));
+  const feas=fin.length?`Not financially feasible as entered: ${fin.length} cost conflict${fin.length>1?"s":""} to resolve`+(oth.length?`, plus ${oth.length} decision${oth.length>1?"s":""}`:""):(state.fit?"Feasible after fitting the plan to your cost limit":eco?"Financially feasible on the numbers given":"Not checked: add economics in step 3")+(!fin.length&&oth.length?`; ${oth.length} decision${oth.length>1?"s":""} to review in Strategic conflicts`:"");
   return [["Feasibility",feas],["Objective",GOALS[inp.goal]+(inp.target?` · revenue target ${inr(inp.target)}`:"")],["Core audience",inp.audience||"Not specified"],["Positioning",posStmt],["Strategy",strategy],["Budget",`${inr(state.budget)} over ${inp.months} month${inp.months>1?"s":""} (${inr(al.monthly)} a month)`],["Primary KPI",kpi],["Biggest risk",risk],["First action",w1]];
 }
 function positioning(inp){
@@ -807,7 +828,7 @@ function assumptionRegister(inp,al,eco,fn){
   if(inp.margin)u("Gross margin",inp.margin+"%","You entered","High");
   if(inp.orders)u(JOURNEYS[inp.journey].life,String(inp.orders),"You entered","High");
   if(inp.target)u("Revenue target",inr(inp.target),"You entered","High");
-  if(eco&&eco.beRoas)u("Break-even ROAS",eco.beRoas.toFixed(2),"Calculated: 1 ÷ margin","High");
+  if(eco&&eco.beRoas)u("Break-even return",eco.beRoas.toFixed(2)+"×","Calculated: 1 ÷ margin","High");
   if(eco&&eco.clv)u("Customer lifetime value",inr(eco.clv),"Calculated: order value × margin × lifetime","High");
   if(eco&&eco.maxCac)u("Maximum cost per customer",inr(eco.maxCac),eco.maxCacSrc==="user"?"You entered":"Calculated: CLV ÷ 3","High");
   const J=JOURNEYS[inp.journey];
@@ -852,7 +873,7 @@ function checks(inp,al,eco){
   if(eco){
     if(eco.beRoas&&eco.reqRoas&&eco.reqRoas<eco.beRoas)o.push(["warn","Your revenue target is only "+eco.reqRoas.toFixed(1)+"× the total marketing budget (blended return), below the "+eco.beRoas.toFixed(1)+"× needed to break even at your margin. Hitting the target would not cover the marketing spend unless repeat purchases make up the gap."]);
     if(eco.beRoas&&eco.reqRoas&&eco.reqRoas>=eco.beRoas*2.5)o.push(["warn","Your target needs a blended return of "+eco.reqRoas.toFixed(1)+"× on the total marketing budget. That is ambitious; confirm with a small test before committing the full budget."]);
-    if(eco.maxCac&&eco.spendPerOrder&&eco.spendPerOrder>eco.maxCac)o.push(["warn","The budget works out to "+inr(eco.spendPerOrder)+" per order against a maximum affordable CAC of "+inr(eco.maxCac)+" (CLV ÷ 3). Either raise order value, improve repeat rate, or lower the target."]);
+    if(false&&eco.maxCac&&eco.spendPerOrder&&eco.spendPerOrder>eco.maxCac)o.push(["warn","The budget works out to "+inr(eco.spendPerOrder)+" per order against a maximum affordable CAC of "+inr(eco.maxCac)+" (CLV ÷ 3). Either raise order value, improve repeat rate, or lower the target."]);
     if(eco.beRoas&&eco.m<.25&&["sl","ac"].includes(inp.goal))o.push(["warn","With a "+inp.margin+"% margin, break-even return is "+eco.beRoas.toFixed(1)+"×. Paid acquisition is hard at this margin; weight effort toward order value and repeat purchase."]);
   }else o.push(["ok","Add order value and margin in step 3, Economics, to get break-even ROAS, the most you can pay per customer, and funnel targets."]);
   if(inp.rates&&inp.rates.some(r=>r.src==="assumption"))o.push(["ok","Some conversion rates are planning assumptions. Replace them with your own figures under 'Your conversion rates' once you have two weeks of results."]);
@@ -1066,13 +1087,15 @@ function reportBlocks(){
   T(["22%","78%"],"",execSummary(inp,al,eco,state.fn).map(x=>`<tr><td style="font-weight:600;color:#5B6B82">${e(x[0])}</td><td>${e(x[1])}</td></tr>`));
   const CFp=conflicts(),NCp=notChecked();
   H2("Strategic conflicts and decisions");
+  if(fitNote())P(`<div class="box"><b>Plan fitted to your limit.</b> ${e(fitNote())}</div>`);
   if(CFp.length)CFp.forEach(c=>{B.push({k:1,h:`<h3 style="color:#9E2F42">⚠ ${e(c.t)}</h3>`});
     P(`<div class="box" style="border-left-color:#B63A4E"><b>Evidence</b><ul>${c.ev.map(x=>`<li>${e(x)}</li>`).join("")}</ul><b>Business impact</b><div>${e(c.im)}</div><b>Options</b><ol style="margin:2px 0 0;padding-left:16px">${c.op.map(x=>`<li>${e(x)}</li>`).join("")}</ol><div style="margin-top:6px"><b>Recommended:</b> ${e(c.rec)}</div></div>`)});
   else P(`<div class="check">No conflicts found between budget, economics, targets and channels.</div>`);
   if(NCp.length)P(`<div class="muted">Not checked yet: ${e(NCp.join("; "))}.</div>`);
   const PAp=perfAnalysis();
   if(PAp){H2("Your current performance");
-    T(["20%","11%","9%","11%","11%","11%","15%","12%"],`<tr><th>Channel</th><th class="r">Spend now</th><th class="r">Results</th><th class="r">Cost each</th><th class="r">Per customer</th><th class="r">Return</th><th>Verdict</th><th class="r">Plan/month</th></tr>`,PAp.rows.map(x=>`<tr><td>${e(x.nm)}</td><td class="r">${inr(x.p.spend)}</td><td class="r">${x.p.res||"—"}</td><td class="r">${x.cpr?inr(x.cpr):"—"}</td><td class="r">${x.cpc?inr(x.cpc):"—"}</td><td class="r">${x.ret?x.ret.toFixed(2)+"×":"—"}</td><td><b>${e(x.v)}</b></td><td class="r">${x.plan?inr(x.plan):"—"}</td></tr>`));
+    const Dp=dq();if(Dp.noCust||Dp.partial)P(`<div class="check warn"><b>Data quality:</b> ${Dp.noCust?"Clients by channel weren't provided":"Clients are missing for some channels"}, so channel quality can't be compared reliably. Enquiry volume and cost per enquiry are directional evidence, not proof of lower cost per client.</div>`);
+    T(["18%","10%","8%","8%","10%","10%","9%","15%","12%"],`<tr><th>Channel</th><th class="r">Spend now</th><th class="r">Results</th><th class="r">Share</th><th class="r">Cost each</th><th class="r">Per customer</th><th class="r">Return</th><th>Verdict</th><th class="r">Plan/month</th></tr>`,PAp.rows.map(x=>`<tr><td>${e(x.nm)}</td><td class="r">${inr(x.p.spend)}</td><td class="r">${x.p.res||"—"}</td><td class="r">${PAp.T.res?(x.p.res/PAp.T.res*100).toFixed(1)+"%":"—"}</td><td class="r">${x.cpr?inr(x.cpr):"—"}</td><td class="r">${x.cpc?inr(x.cpc):"—"}</td><td class="r">${x.ret?x.ret.toFixed(2)+"×":"—"}</td><td><b>${e(x.v)}</b></td><td class="r">${x.plan?inr(x.plan):"—"}</td></tr>`));
     P(`<div class="muted">${PAp.T.blended?`Blended return now: ${PAp.T.blended.toFixed(2)}× (all spend). `:""}${PAp.T.paidRoas?`Paid-media ROAS now: ${PAp.T.paidRoas.toFixed(2)}× (paid channels only). `:""}${PAp.T.cpc?`Cost per customer now: ${inr(PAp.T.cpc)}.`:""}</div>`)}
   H2("Readiness check");
   B.push({k:1,h:`<div>${rdp.overall===null?"Not assessed yet: checklist not answered.":`<b style="font-size:16px">${rdp.overall}%</b> of answered items in place.${rdp.weakest&&rdp.weakest.sc<100?` Weakest area: <b>${e(rdp.weakest.n)}</b>. ${e(rdp.weakest.tip)}`:""}`} <span class="muted">Input completeness: ${rdp.completeness}%.</span></div>`});
@@ -1401,7 +1424,7 @@ function perfAnalysis(){
     if(!p.spend&&(p.res||p.cust)){x.v="Protect: free source";return}
     if(p.spend&&!p.res&&!p.cust){x.v="Fix before adding budget";return}
     if(x.cpc&&lim){x.v=x.cpc<=lim?"Keep and grow":x.cpc<=lim*1.25?"Keep, improve conversion":"Reduce and fix";return}
-    if(x.cpr&&avg){x.v=x.cpr<=avg?"Keep and grow":"Keep, watch the cost";return}
+    if(x.cpr&&avg){x.v=(x.cpr<=avg?"Keep and grow":"Keep, watch the cost")+(p.cust?"":" (directional)");return}
     x.v="Keep";});
   const planMo=c=>{const r=al.rows.find(r=>r.c===c);return r?r.mo:0};
   rowsP.forEach(x=>{x.plan=planMo(x.c);const shared=x.c==="crm"&&inp.perf.filter(p=>PERFMAP(p.c)==="crm").length>1;x.shared=shared});
@@ -1426,13 +1449,15 @@ function conflicts(){
     O.push(`Spend less for the same target: ${inr(b2)} instead of ${inr(budget)} for ${fn.units} ${u} at ${inr(lim)} each.`+(reachOK===null?" Works only if the smaller budget still reaches the "+Math.round(fn.st[0].c).toLocaleString("en-IN")+" people the funnel needs; add your cost per 1,000 in step 3 to check.":reachOK?` Reach check passes: the paid share of ${inr(b2)} still reaches the ${Math.round(fn.st[0].c).toLocaleString("en-IN")} people needed at your ${inr(inp.cpm)} per 1,000.`:` Reach check fails: the paid share of ${inr(b2)} can't reach the ${Math.round(fn.st[0].c).toLocaleString("en-IN")} people needed.`));
     if(reachOK!==false)cand.push([1-b2/budget,`spend ${inr(b2)} instead of ${inr(budget)}`+(reachOK?" (reach check passes)":""),`${fn.units} ${u} at ${inr(lim)} each, within your limit`]);
     cand.sort((a,b)=>a[0]-b[0]);best=cand[0];
-    C.push({t:"Cost per customer is above your limit",ev:[`Budget per ${u.replace(/s$/,"")}: ${inr(cpu)} (${inr(budget)} ÷ ${fn.units})`,`Your limit: ${inr(lim)}`,`Gap: ${inr(cpu-lim)}, ${pct(f-1)} above the limit`],
-      im:"As entered, the plan is not financially feasible: each customer would cost more than they're worth to you.",op:O,
+    const nonAcq=al.rows.filter(r=>!r.acq).reduce((s,r)=>s+r.amt,0);
+    if(!state._previewing){state._previewing=true;try{const pv=allocate(inp,b2);O.push(`Preview of the plan at ${inr(b2)}: ${pv.rows.map(r=>CH[r.c].n.split(" (")[0]+" "+inr(r.amt)).join(", ")}.`)}finally{state._previewing=false}}
+    C.push({id:"cac",b2,t:"Cost per customer is above your limit",ev:[`${fn.cpuLabel==="acquisition spend"?"Acquisition spend":"Budget"} per ${u.replace(/s$/,"")}: ${inr(cpu)} (${inr(fn.acqSpend)} ÷ ${fn.units})`,`Your limit: ${inr(lim)}`,`Gap: ${inr(cpu-lim)} per customer, ${pct(f-1)} above the limit`],
+      im:`To win ${fn.units} ${u} at ${inr(lim)} each, acquisition spend can be at most ${inr(b2)}. ${inr(fn.acqSpend-b2)} of the ${inr(budget)} can't be justified as acquisition spend unless it goes to infrastructure, follow-up, brand-building or testing${nonAcq?` (the plan currently has ${inr(nonAcq)} there)`:""}.`,op:O,
       rec:best?`Smallest change that closes the gap: ${best[1]} (a ${pct(Math.abs(best[0]))} change). Recalculated: ${best[2]}.`:"Revise the target or the limit before committing the budget."});
   }
   if(eco&&eco.beRoas&&eco.reqRoas&&eco.reqRoas<eco.beRoas){
     const m=inp.margin/100,loss=budget-inp.target*m;
-    C.push({t:"Revenue target doesn't cover the marketing spend",ev:[`Target ${inr(inp.target)} ÷ budget ${inr(budget)} = ${eco.reqRoas.toFixed(2)}× blended return`,`Needed to break even at ${inp.margin}% margin: ${eco.beRoas.toFixed(2)}×`],
+    C.push({id:"be",t:"Revenue target doesn't cover the marketing spend",ev:[`Target ${inr(inp.target)} ÷ budget ${inr(budget)} = ${eco.reqRoas.toFixed(2)}× blended return`,`Needed to break even at ${inp.margin}% margin: ${eco.beRoas.toFixed(2)}×`],
       im:`Even if the target is hit, contribution (${inr(inp.target*m)}) falls ${inr(loss)} short of the budget.`,
       op:[`Raise the target to at least ${inr(budget*eco.beRoas)}.`,`Cut the budget to ${inr(inp.target*m)} (break-even for this target).`,`Raise gross margin to at least ${Math.ceil(budget/inp.target*100)}%.`,`Accept the loss deliberately as an investment in lifetime value${eco.clv?" (each customer is worth "+inr(eco.clv)+" over time)":""}.`],
       rec:eco.clv&&inp.orders>1?"If repeat purchases are reliable, judge on lifetime value; otherwise cut the budget to break-even.":`Cut the budget to about ${inr(inp.target*m)}, or raise the target to ${inr(budget*eco.beRoas)}.`});
@@ -1440,7 +1465,7 @@ function conflicts(){
   if(inp.cpm>0&&fn.units&&fn.st[0].c){
     const paid=al.rows.filter(r=>PAID.includes(r.c)).reduce((s,r)=>s+r.amt,0);const del=paid/inp.cpm*1000,need=fn.st[0].c;
     if(del<need){const prodR=(fn.R||inp.rates).slice(0,J.rev).reduce((p,r)=>p*r.v,1);const u2=Math.floor(del*prodR);
-      C.push({t:"Paid media can't deliver the reach the funnel needs",ev:[`Funnel needs ${Math.round(need).toLocaleString("en-IN")} people reached`,`Paid-media budget ${inr(paid)} at your ${inr(inp.cpm)} per 1,000 reaches about ${Math.round(del).toLocaleString("en-IN")}`,`Gap: ${Math.round(need-del).toLocaleString("en-IN")} people (${pct(1-del/need)} of the need)`],
+      C.push({id:"reach",t:"Paid media can't deliver the reach the funnel needs",ev:[`Funnel needs ${Math.round(need).toLocaleString("en-IN")} people reached`,`Paid-media budget ${inr(paid)} at your ${inr(inp.cpm)} per 1,000 reaches about ${Math.round(del).toLocaleString("en-IN")}`,`Gap: ${Math.round(need-del).toLocaleString("en-IN")} people (${pct(1-del/need)} of the need)`],
         im:`Paid media alone would produce about ${u2} ${u}, not ${fn.units}.`,
         op:[`Close the gap with organic content, creators and referrals: they must reach about ${Math.round(need-del).toLocaleString("en-IN")} people.`,`Improve conversion so fewer people are needed.`,`Revise the target to what paid reach supports: about ${u2} ${u}${eco&&eco.perUnit?` (${inr(u2*eco.perUnit)})`:""}.`],
         rec:u2>=fn.units*0.7?"The gap is modest: plan organic and creator reach to cover it and track weekly.":`Treat ${u2} ${u} as the paid-media baseline and set the target around it until organic reach is proven.`});}
@@ -1448,11 +1473,21 @@ function conflicts(){
   const A=perfAgg(inp);const curCust=Object.values(A).reduce((s,a)=>s+a.cust,0),curSpend=Object.values(A).reduce((s,a)=>s+a.spend,0);
   if(curCust>0&&fn.units){const need=fn.units/inp.months;if(need>curCust*1.5)C.push({t:"Target is far above your current results",ev:[`You win about ${curCust} ${u} a month now`,`The plan needs about ${Math.ceil(need)} a month (${(need/curCust).toFixed(1)}× today)`],
     im:"A jump this size rarely comes from reallocating budget alone.",op:[`Set a stepped target: about ${Math.ceil(curCust*1.3)} a month first (30% growth), then reassess.`,"Fix the conversion stage with the biggest drop before adding spend.",`Increase the budget only after cost per customer holds at today's level.`],rec:`Start with about ${Math.ceil(curCust*1.3)} ${u} a month and raise the target once two weeks of results confirm the rates.`})}
+  const moNow=Object.values(A).reduce((s,a)=>s+a.spend,0),moPlan=budget/inp.months;
+  if(moNow>moPlan*1.05)C.push({id:"under",t:"Plan budget is below what you spend now",ev:[`You spend ${inr(moNow)} a month today on the channels in step 4`,`The plan budget is ${inr(moPlan)} a month`],
+    im:`Current channels must be cut by about ${pct(1-moPlan*0.8/moNow)} on average; expect fewer ${perfLabels(inp.journey)[0].replace(" a month","").toLowerCase()} unless efficiency improves.`,
+    op:[`Raise the plan budget to about ${inr(moNow/0.84*inp.months)}${inp.months>1?` over ${inp.months} months (${inr(moNow/0.84)} a month)`:""} to keep current activity plus tracking and testing.`,`Accept the cut: the plan reduces paid channels in proportion and keeps free sources.`,`Cut the channel with the weakest customer results first, once customer data by channel is available.`],
+    rec:dq().noCust?"Cut in proportion for now (the plan does this), and record clients by channel so the next cut can follow real customer cost.":"Cut the channels with the highest cost per customer first."});
   if(eco&&eco.maxCac){const bad=Object.entries(A).filter(([c,a])=>a.cust>0&&a.spend>0&&a.spend/a.cust>eco.maxCac*1.25);
     if(bad.length)C.push({t:"Some current channels cost more than your limit",ev:bad.map(([c,a])=>`${CH[c].n}: ${inr(a.spend/a.cust)} per customer vs ${inr(eco.maxCac)} limit`),
       im:"Scaling these as they are would raise overall cost per customer.",op:["Keep them running but reduce spend (the plan already does this).","Fix the landing page, offer or follow-up before adding budget.","Check whether they assist other channels before cutting further."],rec:"Reduce and fix, then re-test for two weeks."});}
   return C;
 }
+function fitNote(){const F=state.fit,al=state.al,fn=state.fn,eco=state.eco;if(!F)return null;
+  if(F.mode==="cut")return`Applied: budget cut to ${inr(state.budget)} so each of the ${fn.units} ${fn.J.stages[fn.J.rev].toLowerCase()} costs ${inr(fn.costPerUnit)}${eco&&eco.maxCac?`, within your ${inr(eco.maxCac)} limit`:""}. Revised targets: ${fn.units} ${fn.J.stages[fn.J.rev].toLowerCase()}, ${Math.round(fn.st[0].c).toLocaleString("en-IN")} people reached.`;
+  if(F.mode==="reassign"&&al.fit)return`Applied: acquisition capped at ${inr(al.fit.acq)} (${inr(fn.costPerUnit)} per ${fn.J.stages[fn.J.rev].toLowerCase().replace(/s$/,"")}); ${inr(al.fit.moved)} moved to infrastructure, follow-up and testing, labelled as non-acquisition spend.`;
+  return null}
+function dq(){const P=state.inp.perf||[];const paid=P.filter(p=>p.res>0);const noCust=paid.length>0&&paid.every(p=>!p.cust);const someCust=paid.some(p=>p.cust);const partial=paid.length>0&&someCust&&paid.some(p=>!p.cust);return{noCust,partial,any:paid.length>0}}
 function notChecked(){const {inp,eco}=state;const N=[];if(!eco)N.push("Economics (add value and margin in step 3)");if(!inp.cpm)N.push("Reach feasibility (add your cost per 1,000 in step 3)");if(!inp.perf||!inp.perf.length)N.push("Current performance (add channels in step 4)");return N}
 function validation(){
   const {inp,al,eco,fn}=state;const V=[];const ok=(b,t,f)=>V.push([b,b?t:f]);
@@ -1465,6 +1500,8 @@ function validation(){
   const sum=al.rows.reduce((s,r)=>s+r.amt,0);ok(Math.abs(sum-state.budget)<2,"Allocations add up to the budget","Allocations don't add up");
   ok(true,"Paid-media ROAS and blended return are labelled separately","");
   const C=conflicts();ok(true,C.length?`${C.length} strategic conflict${C.length>1?"s":""} identified, each with options and a recalculation`:"No strategic conflicts found on the numbers given","");
+  const D=dq();if(D.noCust||D.partial)V.push([false,"Channel decisions are directional: clients by channel are missing, so cost per client can't be compared across channels"]);
+  if(fitNote())V.push([true,"Conflict resolved in the plan: "+fitNote()]);
   const nc=notChecked();if(nc.length)V.push([false,"Not checked yet: "+nc.join("; ")]);
   ok(al.rows.every(r=>(r.why||[]).length),"Every allocation has a stated reason","");
   return V;
@@ -1479,7 +1516,7 @@ $("#f").addEventListener("submit",e=>{
   if(!inp.name||!inp.industry){err.textContent="Enter the company name and industry.";return}
   if(!(inp.budget>=1000)){err.textContent="Enter a total budget of at least ₹1,000.";return}
   err.textContent="";
-  state.inp=inp;state.budget=inp.budget;state.ai=null;
+  state.inp=inp;state.budget=inp.budget;state.ai=null;state.fit=null;
   render();
   $("#out").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth",block:"start"});
   if(sampleFn)runAI(false);
@@ -1523,7 +1560,7 @@ function render(){
   <section class="panel" id="sv-sec"></section>
   <section class="panel"><div class="bar-actions"><button type="button" id="pdf" style="background:var(--accent);border-color:var(--accent);color:#231800">Download PDF</button><button type="button" id="dl">Download plan (.md)</button><button type="button" id="cp">Copy plan as text</button><span class="small muted" id="cpo" role="status"></span></div></section>`;
   paintAlloc();paintRest();renderAIShell();
-  $("#wi").addEventListener("input",e=>{const p=+e.target.value;$("#wio").textContent=p+"%";state.budget=Math.round(state.inp.budget*p/100/100)*100;compute();paintAlloc();paintRest();if(state.ai)paintAI()});
+  $("#wi").addEventListener("input",e=>{state.fit=null;const p=+e.target.value;$("#wio").textContent=p+"%";state.budget=Math.round(state.inp.budget*p/100/100)*100;compute();paintAlloc();paintRest();if(state.ai)paintAI()});
   $("#dl").addEventListener("click",download);
   $("#pdf").addEventListener("click",downloadPDF);
   $("#cp").addEventListener("click",()=>{const t=toMarkdown();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>$("#cpo").textContent="Copied").catch(()=>$("#cpo").textContent="Copy isn't available here; use download instead.")});
@@ -1556,10 +1593,16 @@ function paintRest(){
   // summary
   const sm=execSummary(inp,al,eco,fn);
   const CF=conflicts(),NC=notChecked();
-  $("#cf-sec").innerHTML=`<h2>Strategic conflicts and decisions</h2>`+(CF.length?CF.map((c,i)=>`<div class="cf-card"><h3>⚠ ${esc(c.t)}</h3><div class="lbl">Evidence</div><ul style="margin:2px 0">${c.ev.map(x=>`<li>${esc(x)}</li>`).join("")}</ul><div class="lbl">Business impact</div><div>${esc(c.im)}</div><div class="lbl">Options</div><ol>${c.op.map(x=>`<li>${esc(x)}</li>`).join("")}</ol><div class="rec"><b>Recommended:</b> ${esc(c.rec)}</div></div>`).join(""):`<div class="okline">No conflicts found between budget, economics, targets${state.inp.perf&&state.inp.perf.length?", current performance":""} and channels.</div>`)+(NC.length?`<p class="small muted" style="margin-bottom:0">Not checked yet: ${esc(NC.join("; "))}.</p>`:"");
+  $("#cf-sec").innerHTML=`<h2>Strategic conflicts and decisions</h2>`+(CF.length?CF.map((c,i)=>`<div class="cf-card"><h3>⚠ ${esc(c.t)}</h3><div class="lbl">Evidence</div><ul style="margin:2px 0">${c.ev.map(x=>`<li>${esc(x)}</li>`).join("")}</ul><div class="lbl">Business impact</div><div>${esc(c.im)}</div><div class="lbl">Options</div><ol>${c.op.map(x=>`<li>${esc(x)}</li>`).join("")}</ol><div class="rec"><b>Recommended:</b> ${esc(c.rec)}</div>${c.id==="cac"?`<div class="bar-actions" style="margin-top:10px"><button type="button" class="copy" data-fit="cut" data-v="${Math.round(c.b2)}">Rebuild at ${esc(inr(c.b2))}</button><button type="button" class="copy" data-fit="reassign" data-v="${Math.round(c.b2)}">Keep ${esc(inr(state.budget))}, cap acquisition at ${esc(inr(c.b2))}</button></div>`:""}</div>`).join(""):`<div class="okline">No conflicts found between budget, economics, targets${state.inp.perf&&state.inp.perf.length?", current performance":""} and channels.</div>`)+(NC.length?`<p class="small muted" style="margin-bottom:0">Not checked yet: ${esc(NC.join("; "))}.</p>`:"");
+  const FN=fitNote();if(FN)$("#cf-sec").insertAdjacentHTML("afterbegin",`<div class="move" style="margin:0 0 12px"><b>Plan fitted to your limit.</b> ${esc(FN)} <button type="button" class="copy" id="unfit">Undo</button></div>`);
+  $("#cf-sec").querySelectorAll("[data-fit]").forEach(b=>b.addEventListener("click",()=>{const v=+b.dataset.v;
+    if(b.dataset.fit==="cut"){state.fit={mode:"cut",prev:state.budget};state.budget=v}else{state.fit={mode:"reassign",acq:v}}
+    compute();compute();paintAlloc();paintRest();$("#cf-sec").scrollIntoView({block:"start"})}));
+  const ub=$("#unfit");if(ub)ub.addEventListener("click",()=>{if(state.fit&&state.fit.mode==="cut")state.budget=state.fit.prev||state.inp.budget;state.fit=null;compute();compute();paintAlloc();paintRest()});
   const PA=perfAnalysis(),pf=$("#pf-sec");
   if(PA){pf.hidden=false;const L=perfLabels(state.inp.journey);
-    pf.innerHTML=`<h2>Your current performance</h2><p class="small muted" style="margin-top:0">What you entered in step 4, and what the plan does with each channel.</p><div class="tablewrap"><table class="alloc"><thead><tr><th>Channel</th><th class="num">Spend now</th><th class="num">${esc(L[0].replace(" a month",""))}</th><th class="num">Cost each</th><th class="num">Per customer</th><th class="num">Return</th><th>Verdict</th><th class="num">Plan a month</th></tr></thead><tbody>${PA.rows.map(x=>`<tr><td>${esc(x.nm)}</td><td class="num">${inr(x.p.spend)}</td><td class="num">${x.p.res||"—"}</td><td class="num">${x.cpr?inr(x.cpr):"—"}</td><td class="num">${x.cpc?inr(x.cpc):"—"}</td><td class="num">${x.ret?x.ret.toFixed(2)+"×"+(PAID.includes(x.c)?" ROAS":""):"—"}</td><td><b>${esc(x.v)}</b></td><td class="num">${x.plan?inr(x.plan)+(x.shared?"*":""):"—"}</td></tr>`).join("")}</tbody></table></div>
+    const D=dq();
+    pf.innerHTML=`<h2>Your current performance</h2><p class="small muted" style="margin-top:0">What you entered in step 4, and what the plan does with each channel.</p>${D.noCust||D.partial?`<div class="checks"><div class="warn"><b>Data quality:</b> ${D.noCust?"Clients by channel weren't provided":"Clients are missing for some channels"}, so channel quality can't be compared reliably. The plan uses enquiry volume and cost per enquiry as directional evidence, not proof of lower cost per client. Add clients won per channel in step 4 to make these decisions firm.</div></div>`:""}<div class="tablewrap"><table class="alloc"><thead><tr><th>Channel</th><th class="num">Spend now</th><th class="num">${esc(L[0].replace(" a month",""))}</th><th class="num">Share</th><th class="num">Cost each</th><th class="num">Per customer</th><th class="num">Return</th><th>Verdict</th><th class="num">Plan a month</th></tr></thead><tbody>${PA.rows.map(x=>`<tr><td>${esc(x.nm)}</td><td class="num">${inr(x.p.spend)}</td><td class="num">${x.p.res||"—"}</td><td class="num">${PA.T.res?(x.p.res/PA.T.res*100).toFixed(1)+"%":"—"}</td><td class="num">${x.cpr?inr(x.cpr):"—"}</td><td class="num">${x.cpc?inr(x.cpc):"—"}</td><td class="num">${x.ret?x.ret.toFixed(2)+"×"+(PAID.includes(x.c)?" ROAS":""):"—"}</td><td><b>${esc(x.v)}</b></td><td class="num">${x.plan?inr(x.plan)+(x.shared?"*":""):"—"}</td></tr>`).join("")}</tbody></table></div>
     <p class="small muted">${PA.T.blended?`Blended return now: ${PA.T.blended.toFixed(2)}× (all spend). `:""}${PA.T.paidRoas?`Paid-media ROAS now: ${PA.T.paidRoas.toFixed(2)}× (paid channels only). `:""}${PA.T.cpc?`Cost per customer now: ${inr(PA.T.cpc)}. `:""}${PA.rows.some(x=>x.shared)?"*Referrals and CRM share one plan line.":""}</p>`}
   else{pf.hidden=true;pf.innerHTML=""}
   $("#sum-sec").innerHTML=`<h2>Executive summary</h2><div class="sum">${sm.map(x=>`<div class="k">${esc(x[0])}</div><div>${esc(x[1])}</div>`).join("")}</div>`;
@@ -1686,8 +1729,8 @@ function paintAI(){
 function toMarkdown(){
   const {inp,al,eco,ph,ai,budget}=state;const L=[];
   const rdm=readiness();
-  L.push(`# Marketing plan: ${inp.name}`,``,`## Executive summary`,``,...execSummary(inp,al,eco,state.fn).map(x=>`- **${x[0]}:** ${x[1]}`),``,...(()=>{const C=conflicts(),O=[`## Strategic conflicts and decisions`,``];if(!C.length)O.push("No conflicts found between budget, economics, targets and channels.");C.forEach(c=>{O.push(`### ⚠ ${c.t}`,``,`**Evidence:**`,...c.ev.map(x=>`- ${x}`),``,`**Business impact:** ${c.im}`,``,`**Options:**`,...c.op.map((x,i)=>`${i+1}. ${x}`),``,`**Recommended:** ${c.rec}`,``)});const nc=notChecked();if(nc.length)O.push(`Not checked yet: ${nc.join("; ")}.`);O.push("");return O})(),
-  ...(()=>{const P=perfAnalysis();if(!P)return[];return[`## Your current performance`,``,`| Channel | Spend now | Results | Cost each | Per customer | Return | Verdict | Plan/month |`,`|---|---|---|---|---|---|---|---|`,...P.rows.map(x=>`| ${x.nm} | ${inr(x.p.spend)} | ${x.p.res||"—"} | ${x.cpr?inr(x.cpr):"—"} | ${x.cpc?inr(x.cpc):"—"} | ${x.ret?x.ret.toFixed(2)+"×":"—"} | ${x.v} | ${x.plan?inr(x.plan):"—"} |`),``,`${P.T.blended?`Blended return now: ${P.T.blended.toFixed(2)}×. `:""}${P.T.paidRoas?`Paid-media ROAS now: ${P.T.paidRoas.toFixed(2)}×. `:""}`,``]})(),
+  L.push(`# Marketing plan: ${inp.name}`,``,`## Executive summary`,``,...execSummary(inp,al,eco,state.fn).map(x=>`- **${x[0]}:** ${x[1]}`),``,...(()=>{const C=conflicts(),O=[`## Strategic conflicts and decisions`,``,...(fitNote()?[`**Plan fitted to your limit.** ${fitNote()}`,``]:[])];if(!C.length)O.push("No conflicts found between budget, economics, targets and channels.");C.forEach(c=>{O.push(`### ⚠ ${c.t}`,``,`**Evidence:**`,...c.ev.map(x=>`- ${x}`),``,`**Business impact:** ${c.im}`,``,`**Options:**`,...c.op.map((x,i)=>`${i+1}. ${x}`),``,`**Recommended:** ${c.rec}`,``)});const nc=notChecked();if(nc.length)O.push(`Not checked yet: ${nc.join("; ")}.`);O.push("");return O})(),
+  ...(()=>{const P=perfAnalysis();if(!P)return[];return[`## Your current performance`,``,...(dq().noCust||dq().partial?[`> **Data quality:** clients by channel are incomplete, so channel quality can't be compared reliably; enquiry volume and cost per enquiry are directional evidence only.`,``]:[]),`| Channel | Spend now | Results | Share | Cost each | Per customer | Return | Verdict | Plan/month |`,`|---|---|---|---|---|---|---|---|---|`,...P.rows.map(x=>`| ${x.nm} | ${inr(x.p.spend)} | ${x.p.res||"—"} | ${P.T.res?(x.p.res/P.T.res*100).toFixed(1)+"%":"—"} | ${x.cpr?inr(x.cpr):"—"} | ${x.cpc?inr(x.cpc):"—"} | ${x.ret?x.ret.toFixed(2)+"×":"—"} | ${x.v} | ${x.plan?inr(x.plan):"—"} |`),``,`${P.T.blended?`Blended return now: ${P.T.blended.toFixed(2)}×. `:""}${P.T.paidRoas?`Paid-media ROAS now: ${P.T.paidRoas.toFixed(2)}×. `:""}`,``]})(),
   `## Readiness check: ${rdm.overall===null?"not assessed":rdm.overall+"% of answered items"} (input completeness ${rdm.completeness}%)`,``,...rdm.dims.map(d=>`- ${d.n}: ${d.sc===null?"not assessed":d.sc+"%"}`),``,...(rdm.weakest&&rdm.weakest.sc<100?[`Weakest area: ${rdm.weakest.n}. ${rdm.weakest.tip}`,``]:[]),`${inp.industry} · ${MODELS[inp.model]} · ${STAGES[inp.stage]} · ${REACH[inp.reach]} · ${POS[inp.pos]} · Goal: ${GOALS[inp.goal]}`,`Budget: ${inr(budget)} over ${inp.months} month(s) (${inr(al.monthly)} a month)`,``,`## Budget allocation`,``,`| Channel | Share | Total | Per month |`,`|---|---|---|---|`);
   al.rows.forEach(r=>L.push(`| ${CH[r.c].n} | ${r.pct}% | ${inr(r.amt)} | ${inr(r.mo)} |`));
   L.push(``,`### Why each channel`);al.rows.forEach(r=>L.push(`- ${CH[r.c].n}: ${whyText(r)}${decideRule(r)?" "+decideRule(r):""}`));
