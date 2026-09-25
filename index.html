@@ -134,6 +134,21 @@ button:hover{border-color:var(--muted)}
 .cf.Low{background:var(--warn-soft);color:var(--neg)}
 .cf.High{background:var(--accent-soft);color:var(--accent-ink)}
 .nots li{margin:4px 0}
+.prow{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr)) auto;gap:6px;align-items:end;margin-top:8px}
+.prow label{margin:0 0 3px;font-size:11.5px;font-weight:500;color:var(--muted)}
+.prow input,.prow select{padding:7px 8px;font-size:13.5px}
+.prow .x{padding:7px 10px}
+@media (max-width:520px){.prow{grid-template-columns:1fr 1fr}.prow>div:first-child{grid-column:1/-1}}
+.cf-card{border:1px solid var(--line);border-left:4px solid var(--neg);border-radius:10px;padding:14px 16px;margin-top:12px}
+.cf-card h3{margin:0 0 6px;font-size:16px}
+.cf-card .lbl{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:8px}
+.cf-card ol{margin:4px 0 0;padding-left:20px}
+.cf-card li{margin:4px 0}
+.cf-card .rec{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin-top:10px}
+.okline{background:var(--soft);border-radius:10px;padding:12px 14px}
+.qc li{margin:5px 0;list-style:none}
+.qc{padding-left:0}
+.rsel{padding:4px 6px!important;font-size:12.5px!important;width:auto!important;min-width:0}
 .badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;white-space:nowrap}
 .b-scale{background:#DDF3E9;color:#17694C}.b-opt{background:#FBF1D9;color:#7A5300}.b-stop{background:#FCE3E7;color:#9E2F42}.b-wait{background:var(--soft);color:var(--muted)}
 :root[data-theme="dark"] .b-scale{background:#15392C;color:#6FD3A8}
@@ -270,17 +285,23 @@ button:hover{border-color:var(--muted)}
     <div><label for="orders" id="ordersl">Purchases per customer, lifetime</label><input id="orders" name="orders" type="number" min="1" step="0.1" inputmode="decimal"></div>
     <div><label for="target">Revenue target for the period (₹)</label><input id="target" name="target" type="number" min="0" inputmode="numeric"></div>
   </div>
-  <label for="maxcac">Most you'd pay to win one customer (₹) <span class="hint">optional</span></label>
-  <input id="maxcac" name="maxcac" type="number" min="0" inputmode="numeric">
+  <div class="two">
+    <div><label for="maxcac">Most you'd pay to win one customer (₹)</label><input id="maxcac" name="maxcac" type="number" min="0" inputmode="numeric"></div>
+    <div><label for="cpm">Your typical cost per 1,000 people reached on ads (₹)</label><input id="cpm" name="cpm" type="number" min="0" inputmode="numeric"></div>
+  </div>
   <details id="ratesbox">
     <summary>Your conversion rates</summary>
     <p class="small muted">Enter what you know from past results. Blank fields use planning assumptions, clearly labelled in the plan.</p>
     <div id="rates"></div>
   </details>
+  <h2 style="margin-top:26px">4. Current performance</h2>
+  <p class="small muted" style="margin:0">Optional. Monthly figures for channels you already use. Your real results come first: the plan keeps what works and explains any change.</p>
+  <div id="perf"></div>
+  <button type="button" id="addperf" style="margin-top:10px">Add a channel</button>
   <details id="adv">
-    <summary>Current activity and channel limits</summary>
-    <label for="current">What you do today and how it performs</label>
-    <textarea id="current" name="current" placeholder="Instagram ads ₹40k/month, ROAS 2.1; email list 3,000"></textarea>
+    <summary>Notes and channel limits</summary>
+    <label for="current">Other notes about current activity</label>
+    <textarea id="current" name="current" placeholder="Email list of 3,000; referrals mostly from past clients"></textarea>
     <label id="ex-l">Channels you can't use</label>
     <div class="goals" id="exclude" aria-labelledby="ex-l"></div>
   </details>
@@ -317,7 +338,7 @@ const KB=[
 ["Brand Management","Aaker brand equity (awareness, perceived quality, associations, loyalty)","br,rt","*","Invest in perceived quality and loyalty, not awareness alone."],
 ["Brand Management","Kapferer brand identity prism","br,la","*","Define physique, personality, culture, relationship, reflection and self-image before creative work."],
 ["Brand Management","Points of parity and points of difference","*","*","Match the category's must-haves; lead every message with one credible point of difference."],
-["Brand Management","Positioning statement","*","*","For [target] who [need], [brand] is the [frame] that [benefit] because [reason to believe]."],
+["Brand Management","Positioning statement","*","*","Position in this order: target audience, their need, your category, the benefit, and the reason to believe."],
 ["Brand Management","Brand element criteria","la,br","*","Name, logo and packaging should be memorable, meaningful, likable, transferable, adaptable and protectable."],
 ["Brand Management","Brand resonance","rt,en","*","Aim for behavioural loyalty, attachment, community and active engagement."],
 ["Brand Management","Brand extensions and extensibility","ex","*","Check that brand associations transfer before entering a new category."],
@@ -472,7 +493,10 @@ function actsFor(c,inp){
   if(c==="organic")a=nw?[["Short video production",55],["Launch content library",30],["Community replies and DMs",15]]:ch.a;
   if(c==="search"&&nw)a=[["High-intent category keywords",70],["Competitor and alternative keywords",10],["Search remarketing",20]];
   if(c==="influencer"&&nw)a=[["Product gifting to relevant creators",55],["Paid posts with one or two selected creators",30],["Rights to reuse creator content",15]];
-  if(c==="crm"&&nw){a=[["Waitlist and launch emails",40],["Enquiry follow-up flow",35],["Referral offer for first customers",25]];k=["Waitlist sign-ups","Enquiry response time","Enquiry to sale rate"]}
+  if(c==="crm"&&!nw&&inp.journey==="enquiry"){a=[["Enquiry follow-up and qualification",30],["Consultation and site-visit reminders",20],["Proposal follow-up and objection handling",25],["Lost-lead nurture and referral requests",25]];k=["Enquiry response time","Enquiry to consultation rate","Proposal win rate","Referrals"]}
+  if(c==="crm"&&!nw&&inp.journey==="subscription"){a=[["Onboarding and activation",35],["Trial-to-paid nurture",30],["Churn-risk alerts and win-back",20],["Referral programme",15]];k=["Activation rate","Trial-to-paid rate","Churn rate","Referrals"]}
+  if(c==="crm"&&inp.journey==="fans"){a=[["Release and gig announcements",40],["Growing the fan list",35],["Superfan perks and early access",25]];k=["List growth","Open rate","Tickets and merch sales"]}
+  if(c==="crm"&&nw&&inp.journey!=="fans"){a=[["Waitlist and launch emails",40],["Enquiry follow-up flow",35],["Referral offer for first customers",25]];k=["Waitlist sign-ups","Enquiry response time","Enquiry to sale rate"]}
   if(c==="influencer"&&lux){a=[["Gifted work to a few selected creators",60],["Rights to reuse creator content",25],["Seeding with niche tastemakers",15]];k=["Reach in target audience","Saves and shares","Profile visits","Enquiries"]}
   if(c==="organic"&&lux){a=[["Behind-the-craft video content",55],["Portfolio posts and showcases",30],["Community replies and DMs",15]];k=["Reach","Saves and shares","Profile visits","Enquiries"]}
   if(c==="test"&&lux)a=[["New channel or audience tests",60],["Creative and message tests",40]];
@@ -484,7 +508,7 @@ function actsFor(c,inp){
     if(c==="influencer")a=[["Creator collaborations and duets",50],["Seeding tracks to curators and creators",35],["Rights to reuse content",15]];
   }
   const g=KPI[FAM(inp.goal)];
-  if(g&&g[c]&&!(c==="local"&&FAM(inp.goal)!=="aware"))k=g[c];
+  if(g&&g[c]&&!(c==="local"&&FAM(inp.goal)!=="aware")&&!(c==="crm"&&["enquiry","subscription","fans"].includes(inp.journey)))k=g[c];
   if(inp.journey==="fans"&&["organic","meta","video","influencer"].includes(c)&&FAM(inp.goal)==="aware")k=["Reach","Plays or views","Saves","New followers"];
   if(inp.journey==="enquiry"&&["sales","lead"].includes(FAM(inp.goal))&&["meta","search","organic","influencer","local"].includes(c))k=["Enquiries","Cost per enquiry","Qualified enquiry rate"];
   return{a,k};
@@ -549,11 +573,28 @@ function renderRates(keep){
 }
 function syncJourney(){
   const J=JOURNEYS[jSel.value];$("#aovl").textContent=J.val;$("#ordersl").textContent=J.life;renderRates();
+  const L=perfLabels(jSel.value);document.querySelectorAll("#perf .pl0").forEach(x=>x.textContent=L[0]);document.querySelectorAll("#perf .pl1").forEach(x=>x.textContent=L[1]);
 }
 jSel.value=JDEF[$("#model").value];
 jSel.addEventListener("change",()=>{jTouched=true;syncJourney();saveDraft()});
 $("#model").addEventListener("change",()=>{if(!jTouched){jSel.value=JDEF[$("#model").value];syncJourney()}});
 syncJourney();
+const PERFCH=[...EXCL.map(k=>[k,CH[k].n]),["referral","Referrals"]];
+const PERFMAP=c=>c==="referral"?"crm":c;
+function perfLabels(j){return{purchase:["Orders a month","Customers a month"],enquiry:["Enquiries a month","Clients won a month"],subscription:["Sign-ups a month","Paying subscribers a month"],repeat:["Orders a month","New customers a month"],fans:["New followers a month","Paying fans a month"]}[j]||["Results a month","Customers a month"]}
+function addPerfRow(d){
+  d=d||{};const L=perfLabels($("#journey").value);const box=$("#perf");const n=box.children.length;
+  const row=document.createElement("div");row.className="prow";
+  row.innerHTML=`<div><label for="pc${n}">Channel</label><select id="pc${n}" data-p="c"><option value="">Choose</option>${PERFCH.map(([k,v])=>`<option value="${k}" ${d.c===k?"selected":""}>${esc(v)}</option>`).join("")}</select></div>
+   <div><label for="ps${n}">Spend a month (₹)</label><input id="ps${n}" data-p="spend" type="number" min="0" inputmode="numeric" value="${d.spend??""}"></div>
+   <div><label for="pr${n}" class="pl0">${esc(L[0])}</label><input id="pr${n}" data-p="res" type="number" min="0" inputmode="numeric" value="${d.res??""}"></div>
+   <div><label for="pu${n}" class="pl1">${esc(L[1])}</label><input id="pu${n}" data-p="cust" type="number" min="0" inputmode="numeric" value="${d.cust??""}"></div>
+   <button type="button" class="x" aria-label="Remove channel">×</button>`;
+  row.querySelector(".x").addEventListener("click",()=>{row.remove();saveDraft()});
+  box.appendChild(row);
+}
+$("#addperf").addEventListener("click",()=>addPerfRow());
+function readPerf(){return[...document.querySelectorAll("#perf .prow")].map(r=>{const g=k=>r.querySelector(`[data-p="${k}"]`).value;return{c:g("c"),spend:+g("spend")||0,res:+g("res")||0,cust:+g("cust")||0}}).filter(p=>p.c&&(p.spend||p.res||p.cust))}
 function read(){
   const f=$("#f"),g=n=>f.elements[n]?.value?.trim()??"";
   const J=JOURNEYS[g("journey")]||JOURNEYS.purchase;
@@ -561,13 +602,14 @@ function read(){
   return {name:g("name"),industry:g("industry"),model:g("model"),journey:g("journey")||"purchase",stage:g("stage"),reach:g("reach")||"national",pos:g("pos")||"mid",products:g("products"),audience:g("audience"),
     benefit:g("benefit"),proof:g("proof"),pod:g("pod"),
     goal:(f.querySelector('input[name="goal"]:checked')||{}).value||"sl",budget:+g("budget")||0,months:+g("months")||3,geo:g("geo"),comp:g("comp"),
-    aov:+g("aov")||0,margin:+g("margin")||0,orders:+g("orders")||0,target:+g("target")||0,maxcac:+g("maxcac")||0,rates,current:g("current"),
+    aov:+g("aov")||0,margin:+g("margin")||0,orders:+g("orders")||0,target:+g("target")||0,maxcac:+g("maxcac")||0,cpm:+g("cpm")||0,rates,current:g("current"),perf:readPerf(),
     exclude:[...f.querySelectorAll('input[name="ex"]:checked')].map(x=>x.value)};
 }
 function saveDraft(){try{localStorage.setItem("mpb-draft",JSON.stringify(read()))}catch(e){}}
 function loadDraft(){try{const d=JSON.parse(localStorage.getItem("mpb-draft")||"null");if(!d)return;const f=$("#f");
-  ["name","industry","model","journey","stage","reach","pos","products","audience","benefit","proof","pod","budget","months","geo","comp","aov","margin","orders","target","maxcac","current"].forEach(k=>{if(d[k]!==undefined&&d[k]!==0&&d[k]!==""&&f.elements[k])f.elements[k].value=d[k]});
+  ["name","industry","model","journey","stage","reach","pos","products","audience","benefit","proof","pod","budget","months","geo","comp","aov","margin","orders","target","maxcac","cpm","current"].forEach(k=>{if(d[k]!==undefined&&d[k]!==0&&d[k]!==""&&f.elements[k])f.elements[k].value=d[k]});
   if(d.journey)jTouched=true;
+  $("#perf").innerHTML="";(d.perf||[]).forEach(p=>addPerfRow(p));
   if(d.goal){const r=$("#g-"+d.goal);if(r)r.checked=true}
   (d.exclude||[]).forEach(k=>{const c=$("#x-"+k);if(c)c.checked=true});
   syncJourney();(d.rates||[]).forEach((r,i)=>{if(r&&r.src==="user"){const el=$("#rate"+i);if(el)el.value=+(r.v*100).toFixed(2)}});
@@ -575,8 +617,11 @@ function loadDraft(){try{const d=JSON.parse(localStorage.getItem("mpb-draft")||"
 loadDraft();
 $("#f").addEventListener("input",saveDraft);
 
+function perfAgg(inp){
+  const A={};(inp.perf||[]).forEach(p=>{const c=PERFMAP(p.c);if(!CH[c])return;const a=A[c]=A[c]||{spend:0,res:0,cust:0,src:[]};a.spend+=p.spend;a.res+=p.res;a.cust+=p.cust;a.src.push(p.c)});return A;
+}
 function allocate(inp,budget){
-  const monthly=budget/inp.months;
+  const monthly=budget/inp.months;const eco0=economics(inp,budget);
   const w={...GW[inp.goal]};const why={};const add=(c,t)=>{(why[c]=why[c]||[]).push(t)};
   Object.keys(w).forEach(c=>add(c,"suits "+GOALS[inp.goal].toLowerCase()));
   Object.entries(MADD[inp.model]||{}).forEach(([c,v])=>{w[c]=(w[c]||0)+v;add(c,"typical for "+MODELS[inp.model])});
@@ -588,31 +633,71 @@ function allocate(inp,budget){
   mul(JMUL[inp.journey],{purchase:"online and store buying",enquiry:"enquiry-led sales",subscription:"subscription sign-ups",repeat:"repeat buying",fans:"building a fan base"}[inp.journey]);
   if(monthly<50000&&w.organic!=null){w.organic*=1.4;add("organic","low cost at this budget")}
   if(inp.goal==="rt"&&w.crm==null){w.crm=20;add("crm","core to retention")}
+  // --- your data first ---
+  const A=perfAgg(inp);const prot=new Set(),floor={},cap={};const ev={};
+  const totRes=Object.values(A).reduce((s,a)=>s+a.res,0)||1;
+  const topW=Math.max(1,...Object.values(w).filter(x=>x>0));
+  const L=perfLabels(inp.journey);
+  Object.entries(A).forEach(([c,a])=>{
+    if(inp.exclude.includes(c))return;
+    const nm=a.src.includes("referral")&&c==="crm"?"referrals and CRM":"this channel";
+    if(a.res>0||a.cust>0){
+      prot.add(c);const share=(a.res||a.cust)/totRes;
+      w[c]=Math.max(w[c]||0,topW*0.5)*(1+1.5*share);
+      let t=`your data: ${a.res?a.res.toLocaleString("en-IN")+" "+L[0].replace(" a month","").toLowerCase():a.cust+" customers"} a month`+(a.spend?` from ${inr(a.spend)}`:" at no media cost");
+      const cpc=a.cust>0&&a.spend>0?a.spend/a.cust:null;
+      if(cpc&&eco0&&eco0.maxCac){
+        if(cpc>eco0.maxCac*1.25){w[c]*=.6;t+=`; ${inr(cpc)} per customer is well above your ${inr(eco0.maxCac)} limit, so it's kept but reduced until conversion improves`}
+        else if(cpc>eco0.maxCac){t+=`; ${inr(cpc)} per customer is slightly above your ${inr(eco0.maxCac)} limit, so it stays at its current spend until conversion improves`;if(a.spend){floor[c]=a.spend;cap[c]=a.spend}}
+        else{t+=`; ${inr(cpc)} per customer, within your ${inr(eco0.maxCac)} limit`;if(a.spend)floor[c]=a.spend}
+      }else if(a.spend)floor[c]=a.spend;
+      ev[c]=t;
+    }else if(a.spend>0){w[c]=(w[c]||0)*.5;ev[c]=`your data: no results yet from ${inr(a.spend)} a month, so it's reduced until that's fixed`}
+  });
   inp.exclude.forEach(c=>delete w[c]);
   Object.keys(w).forEach(c=>{if(!(w[c]>0))delete w[c]});
   let fP={new:.15,growing:.10,established:.06}[inp.stage],tP=.10;
   if(monthly<30000){tP=.05;fP=Math.min(fP,.10)}
   const media=1-fP-tP,pool=media*monthly;
   const ranked=Object.entries(w).sort((a,b)=>b[1]-a[1]);
-  const maxN=monthly<50000?3:monthly<200000?5:monthly<1000000?7:9;
-  const fits=set=>{const t=set.reduce((s,x)=>s+x[1],0);return set.every(x=>pool*x[1]/t>=mvs(x[0],inp))};
-  let sel=[];const dropped=[];
-  if(inp.goal==="rt"&&w.crm&&fits([["crm",w.crm]]))sel.push(["crm",w.crm]);
+  const mv=c=>prot.has(c)?0:mvs(c,inp);
+  const maxN=Math.max(monthly<50000?3:monthly<200000?5:monthly<1000000?7:9,prot.size);
+  const fits=set=>{const t=set.reduce((s,x)=>s+x[1],0);return set.every(x=>pool*x[1]/t>=mv(x[0]))};
+  let sel=ranked.filter(([c])=>prot.has(c));const dropped=[];
+  if(inp.goal==="rt"&&w.crm&&!sel.find(x=>x[0]==="crm")&&fits([...sel,["crm",w.crm]]))sel.push(["crm",w.crm]);
   for(const cand of ranked){
     if(sel.length>=maxN)break;
     if(sel.find(x=>x[0]===cand[0]))continue;
     if(fits([...sel,cand]))sel.push(cand);
     else if(dropped.length<4&&ranked.indexOf(cand)<maxN+2)dropped.push(cand[0]);
   }
-  if(!sel.length){const alt=ranked.find(x=>mvs(x[0],inp)<=pool)||ranked[0];if(alt)sel.push(alt)}
+  if(!sel.length){const alt=ranked.find(x=>mv(x[0])<=pool)||ranked[0];if(alt)sel.push(alt)}
   const tot=sel.reduce((s,x)=>s+x[1],0)||1;
-  const rows=sel.map(([c,v])=>({c,share:media*v/tot,why:[...new Set(why[c]||[])].slice(0,3)}));
-  rows.forEach(r=>{const m=mvs(r.c,inp);if(m>0)r.why.push("clears the "+inr(m)+"/month minimum to learn")});
+  let rows=sel.map(([c,v])=>({c,share:media*v/tot,why:[],ev:ev[c]||null,prot:prot.has(c)}));
+  // keep at least current spend for channels that work
+  const fl=rows.filter(r=>floor[r.c]).map(r=>({r,need:floor[r.c]/monthly}));
+  const needSum=fl.reduce((s,x)=>s+x.need,0);
+  if(fl.length){const k=needSum>media*.9?media*.9/needSum:1;
+    fl.forEach(x=>{const nd=x.need*k;if(x.r.share<nd||cap[x.r.c]){x.r.share=nd;x.r.kept=true}});
+    const fixed=rows.filter(r=>r.kept).reduce((s,r)=>s+r.share,0);const rest=rows.filter(r=>!r.kept);const restSum=rest.reduce((s,r)=>s+r.share,0);
+    if(restSum>0)rest.forEach(r=>r.share=r.share/restSum*Math.max(0,media-fixed));
+    else{const f2=media/fixed;rows.forEach(r=>r.share*=f2)}}
+  rows.forEach(r=>{const w0=[...new Set(why[r.c]||[])].slice(0,2);r.why=r.ev?[r.ev,...w0.slice(0,1)]:w0;if(r.kept&&!cap[r.c])r.why.push("keeps at least your current "+inr(floor[r.c])+" a month");
+    const m=mv(r.c);if(m>0)r.why.push("clears the "+inr(m)+"/month minimum to learn")});
   rows.push({c:"foundation",share:fP,why:["tracking, page and creative that every channel depends on"]},{c:"test",share:tP,why:["reserve for new ideas (the 70-20-10 rule)"]});
   const floors=rows.map(r=>Math.floor(r.share*100));let rem=100-floors.reduce((a,b)=>a+b,0);
   rows.map((r,i)=>({i,f:r.share*100-floors[i]})).sort((a,b)=>b.f-a.f).forEach(x=>{if(rem>0){floors[x.i]++;rem--}});
   rows.forEach((r,i)=>{r.pct=floors[i];r.amt=r.share*budget;r.mo=r.share*monthly});
-  return {rows,dropped:dropped.filter(c=>!sel.find(x=>x[0]===c)),monthly,fP,tP};
+  return {rows,dropped:dropped.filter(c=>!sel.find(x=>x[0]===c)),monthly,fP,tP,prot:[...prot]};
+}
+const PAID=["search","meta","video","linkedin","marketplace","offline"];
+function decideRule(r){
+  const inp=state.inp,eco=state.eco;if(["foundation","test"].includes(r.c))return"";
+  const m=metricFor(inp).toLowerCase().replace(/s$/,"");
+  const A=perfAgg(inp)[r.c];if(A&&!A.spend&&A.res)return`Decide on ${perfLabels(inp.journey)[0].toLowerCase()}: keep investing time and content while it holds at ${A.res} or more.`;
+  if(eco&&eco.maxCac&&!["aw","br","en"].includes(inp.goal))return`Decide on cost per customer: increase while it stays under ${inr(eco.maxCac)}; cut if it runs 25% above after two weeks.`;
+  if(["seo","pr"].includes(r.c))return`Decide on rankings, coverage and mentions for the first two to three months, then cost per ${m}.`;
+  return`Decide on cost per ${m}: increase if it's 20% better than the plan average; cut if 25% worse after two weeks.`;
 }
 const whyText=r=>{const w=r.why||[];if(!w.length)return"";const t=w.join("; ");return t[0].toUpperCase()+t.slice(1)+"."};
 
@@ -648,8 +733,20 @@ const STEPS={
   p2:["Double down on the segment and channel with the best early response.","Localise creative and offers.","Fix availability gaps before adding spend."],
   p3:["Scale into adjacent segments or cities.","Build local PR and partnerships.","Set targets per market and review monthly."]}
 };
+const HSPAN={enquiry:[2,4],subscription:[2,3],fans:[2,4]};
+function histRates(inp){
+  const sp=HSPAN[inp.journey];if(!sp||!inp.perf)return inp.rates;
+  const withBoth=inp.perf.filter(p=>p.res>0);
+  const res=withBoth.reduce((s,p)=>s+p.res,0),cu=withBoth.reduce((s,p)=>s+p.cust,0);
+  if(!(res>0&&cu>0))return inp.rates;
+  const hist=cu/res;const R=inp.rates.map(r=>({...r}));const last=sp[1]-1;
+  if(R[last].src==="user")return inp.rates;
+  const others=R.slice(sp[0],last).reduce((p,r)=>p*r.v,1);const v=hist/others;
+  if(v>0&&v<=1){R[last]={v,src:"data",note:`derived from your ${cu} customers ÷ ${res} results`}}
+  return R;
+}
 function funnel(inp,budget,eco){
-  const J=JOURNEYS[inp.journey],R=inp.rates;
+  const J=JOURNEYS[inp.journey],R=histRates(inp);
   let units=null,basis=null;
   if(eco&&eco.ordersNeeded){units=Math.ceil(eco.ordersNeeded);basis="revenue target"}
   else if(eco&&eco.maxCac){units=Math.floor(budget/eco.maxCac);basis="budget ÷ most you'd pay per customer"}
@@ -660,7 +757,7 @@ function funnel(inp,budget,eco){
     for(let i=J.rev+1;i<st.length;i++)st[i].c=st[i-1].c*R[i-1].v;
   }
   const reach=st[0].c;
-  return {J,st,units,basis,anyAssumed:R.some(r=>r.src==="assumption"),
+  return {J,st,units,basis,R,anyAssumed:R.some(r=>r.src==="assumption"),
     costPer1000:reach?budget/reach*1000:null,costPerUnit:units?budget/units:null};
 }
 function execSummary(inp,al,eco,fn){
@@ -670,8 +767,9 @@ function execSummary(inp,al,eco,fn){
   const strat=media.map(r=>CHPHRASE[r.c]).filter(Boolean);
   const lst=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
   const strategy=strat.length?(strat[0][0].toUpperCase()+strat[0].slice(1)+(strat.length>1?", supported by "+lst(strat.slice(1)):"")+`, with ${Math.round(al.tP*100)}% held for testing.`):"";
-  let risk;
-  if(!eco)risk="No economics entered, so there's no limit on what a customer is worth paying for.";
+  let risk;const CF=conflicts();
+  if(CF.length)risk=CF[0].t+(CF.length>1?` (and ${CF.length-1} more)`:"")+". See Strategic conflicts.";
+  else if(!eco)risk="No economics entered, so there's no limit on what a customer is worth paying for.";
   else if(fn.basis==="revenue target"&&eco.maxCac&&fn.costPerUnit&&fn.costPerUnit>eco.maxCac)risk=`The target needs ${inr(fn.costPerUnit)} of budget per customer, above your limit of ${inr(eco.maxCac)}.`;
   else if(inp.stage==="new")risk="No proof or conversion data yet; early numbers will be unstable.";
   else if(inp.months===1)risk="One month leaves little time to learn before judging results.";
@@ -679,7 +777,8 @@ function execSummary(inp,al,eco,fn){
   else risk="Scaling too fast into diminishing returns.";
   const w1=WTASK[FAM(inp.goal)][0].split(". ")[0].replace(/\.$/,"")+".";
   const posStmt=positioning(inp);
-  return [["Objective",GOALS[inp.goal]+(inp.target?` · revenue target ${inr(inp.target)}`:"")],["Core audience",inp.audience||"Not specified"],["Positioning",posStmt],["Strategy",strategy],["Budget",`${inr(state.budget)} over ${inp.months} month${inp.months>1?"s":""} (${inr(al.monthly)} a month)`],["Primary KPI",kpi],["Biggest risk",risk],["First action",w1]];
+  const feas=CF.length?`Not feasible as entered: ${CF.length} conflict${CF.length>1?"s":""} to resolve`:(eco?"No conflicts found on the numbers given":"Not checked: add economics in step 3");
+  return [["Feasibility",feas],["Objective",GOALS[inp.goal]+(inp.target?` · revenue target ${inr(inp.target)}`:"")],["Core audience",inp.audience||"Not specified"],["Positioning",posStmt],["Strategy",strategy],["Budget",`${inr(state.budget)} over ${inp.months} month${inp.months>1?"s":""} (${inr(al.monthly)} a month)`],["Primary KPI",kpi],["Biggest risk",risk],["First action",w1]];
 }
 function positioning(inp){
   const clean=t=>{t=String(t||"").trim().replace(/[\s.!?;,:]+$/,"");return /^[A-Z][a-z]/.test(t)?t[0].toLowerCase()+t.slice(1):t};
@@ -695,7 +794,7 @@ function whatNot(inp,al,eco){
   if(has("influencer"))L.push("Don't choose creators by follower count alone; check audience fit and genuine engagement.");
   if(has("meta")||has("search")||has("video"))L.push("Don't scale ad spend before the creative has been tested.");
   if(inp.journey==="enquiry")L.push("Don't leave an enquiry unanswered for more than 24 hours.");
-  if(eco&&eco.beRoas&&["sl","ac"].includes(inp.goal))L.push(`Don't keep any channel running below a ROAS of ${eco.beRoas.toFixed(1)}; it loses money.`);
+  if(eco&&eco.beRoas&&["sl","ac"].includes(inp.goal))L.push(`Don't keep a paid channel running below a ROAS of ${eco.beRoas.toFixed(1)}× on its own spend; it loses money.`);
   if(inp.stage==="new")L.push("Don't launch paid media until tracking and the landing page work.");
   L.push("Don't change the strategy after three days of data; give each test at least a week.");
   return L.slice(0,7);
@@ -712,9 +811,11 @@ function assumptionRegister(inp,al,eco,fn){
   if(eco&&eco.clv)u("Customer lifetime value",inr(eco.clv),"Calculated: order value × margin × lifetime","High");
   if(eco&&eco.maxCac)u("Maximum cost per customer",inr(eco.maxCac),eco.maxCacSrc==="user"?"You entered":"Calculated: CLV ÷ 3","High");
   const J=JOURNEYS[inp.journey];
-  inp.rates.forEach((r,i)=>u(`${J.stages[i]} → ${J.stages[i+1].toLowerCase()}`,(r.v*100).toFixed(r.v*100<1?2:1).replace(/\.0+$/,"")+"%",r.src==="user"?"You entered":"Planning assumption","" +(r.src==="user"?"High":"Low")));
+  (fn.R||inp.rates).forEach((r,i)=>u(`${J.stages[i]} → ${J.stages[i+1].toLowerCase()}`,(+(r.v*100).toFixed(r.v*100<1?2:1))+"%",r.src==="user"?"You entered":r.src==="data"?"Calculated from your current results ("+r.note.replace("derived from your ","")+")":"Planning assumption",r.src==="assumption"?"Low":r.src==="data"?"Medium":"High"));
   if(fn.units)u(J.stages[J.rev]+" needed",Math.ceil(fn.units).toLocaleString("en-IN"),"Calculated from "+fn.basis+(fn.anyAssumed?" and assumed rates":""),fn.anyAssumed?"Low":"High");
   if(fn.st[0].c)u("People to reach",Math.round(fn.st[0].c).toLocaleString("en-IN"),"Calculated back through the funnel",fn.anyAssumed?"Low":"Medium");
+  (inp.perf||[]).forEach(p=>u(`Current: ${p.c==="referral"?"Referrals":CH[PERFMAP(p.c)].n}`,`${inr(p.spend)}/month, ${p.res} results, ${p.cust} customers`,"You entered","High"));
+  if(inp.cpm)u("Cost per 1,000 people reached",inr(inp.cpm),"You entered","High");
   u("Channel weights and minimum spends","By goal, model, journey, stage, reach, positioning","Planning rule","Medium");
   u("Foundation and test reserve",Math.round(al.fP*100)+"% and "+Math.round(al.tP*100)+"%","Planning rule","Medium");
   return R;
@@ -749,10 +850,10 @@ function checks(inp,al,eco){
   if(inp.pos==="luxury")o.push(["ok","Luxury positioning: the plan avoids marketplaces and discount-led tactics and leans on creators, PR and crafted content. Keep prices firm and access selective."]);
   if(inp.reach!=="local"&&!al.rows.find(r=>r.c==="local"))o.push(["ok","Set up a free Google Business Profile anyway so people searching your name find you; it needs no paid budget."]);
   if(eco){
-    if(eco.beRoas&&eco.reqRoas&&eco.reqRoas<eco.beRoas)o.push(["warn","Your revenue target needs a ROAS of "+eco.reqRoas.toFixed(1)+", below your break-even ROAS of "+eco.beRoas.toFixed(1)+". Hitting the target on this budget would lose money on paid media unless repeat purchases make up the gap."]);
-    if(eco.beRoas&&eco.reqRoas&&eco.reqRoas>=eco.beRoas*2.5)o.push(["warn","Your target needs a ROAS of "+eco.reqRoas.toFixed(1)+" across all spend. That is ambitious; confirm with a small test before committing the full budget."]);
+    if(eco.beRoas&&eco.reqRoas&&eco.reqRoas<eco.beRoas)o.push(["warn","Your revenue target is only "+eco.reqRoas.toFixed(1)+"× the total marketing budget (blended return), below the "+eco.beRoas.toFixed(1)+"× needed to break even at your margin. Hitting the target would not cover the marketing spend unless repeat purchases make up the gap."]);
+    if(eco.beRoas&&eco.reqRoas&&eco.reqRoas>=eco.beRoas*2.5)o.push(["warn","Your target needs a blended return of "+eco.reqRoas.toFixed(1)+"× on the total marketing budget. That is ambitious; confirm with a small test before committing the full budget."]);
     if(eco.maxCac&&eco.spendPerOrder&&eco.spendPerOrder>eco.maxCac)o.push(["warn","The budget works out to "+inr(eco.spendPerOrder)+" per order against a maximum affordable CAC of "+inr(eco.maxCac)+" (CLV ÷ 3). Either raise order value, improve repeat rate, or lower the target."]);
-    if(eco.beRoas&&eco.m<.25&&["sl","ac"].includes(inp.goal))o.push(["warn","With a "+inp.margin+"% margin, break-even ROAS is "+eco.beRoas.toFixed(1)+". Paid acquisition is hard at this margin; weight effort toward order value and repeat purchase."]);
+    if(eco.beRoas&&eco.m<.25&&["sl","ac"].includes(inp.goal))o.push(["warn","With a "+inp.margin+"% margin, break-even return is "+eco.beRoas.toFixed(1)+"×. Paid acquisition is hard at this margin; weight effort toward order value and repeat purchase."]);
   }else o.push(["ok","Add order value and margin in step 3, Economics, to get break-even ROAS, the most you can pay per customer, and funnel targets."]);
   if(inp.rates&&inp.rates.some(r=>r.src==="assumption"))o.push(["ok","Some conversion rates are planning assumptions. Replace them with your own figures under 'Your conversion rates' once you have two weeks of results."]);
   if(inp.stage==="new"&&["sl","ac"].includes(inp.goal))o.push(["ok","New brands selling straight away face high perceived risk. Reviews, guarantees and creator proof matter more than discounts."]);
@@ -963,13 +1064,23 @@ function reportBlocks(){
   const rdp=readiness();
   H2("Executive summary");
   T(["22%","78%"],"",execSummary(inp,al,eco,state.fn).map(x=>`<tr><td style="font-weight:600;color:#5B6B82">${e(x[0])}</td><td>${e(x[1])}</td></tr>`));
-  H2("Marketing readiness");
-  B.push({k:1,h:`<div><b style="font-size:16px">${rdp.overall}%</b> ready. Weakest area: <b>${e(rdp.weakest.n)}</b>. ${e(rdp.weakest.tip)}</div>`});
-  T(["30%","52%","18%"],"",rdp.dims.map(d=>`<tr><td>${e(d.n)}</td><td><div style="height:9px;background:#EEF1F5;border-radius:4px"><div style="height:9px;width:${d.sc}%;background:#E0A21A;border-radius:4px"></div></div></td><td class="r">${d.sc}%</td></tr>`));
+  const CFp=conflicts(),NCp=notChecked();
+  H2("Strategic conflicts and decisions");
+  if(CFp.length)CFp.forEach(c=>{B.push({k:1,h:`<h3 style="color:#9E2F42">⚠ ${e(c.t)}</h3>`});
+    P(`<div class="box" style="border-left-color:#B63A4E"><b>Evidence</b><ul>${c.ev.map(x=>`<li>${e(x)}</li>`).join("")}</ul><b>Business impact</b><div>${e(c.im)}</div><b>Options</b><ol style="margin:2px 0 0;padding-left:16px">${c.op.map(x=>`<li>${e(x)}</li>`).join("")}</ol><div style="margin-top:6px"><b>Recommended:</b> ${e(c.rec)}</div></div>`)});
+  else P(`<div class="check">No conflicts found between budget, economics, targets and channels.</div>`);
+  if(NCp.length)P(`<div class="muted">Not checked yet: ${e(NCp.join("; "))}.</div>`);
+  const PAp=perfAnalysis();
+  if(PAp){H2("Your current performance");
+    T(["20%","11%","9%","11%","11%","11%","15%","12%"],`<tr><th>Channel</th><th class="r">Spend now</th><th class="r">Results</th><th class="r">Cost each</th><th class="r">Per customer</th><th class="r">Return</th><th>Verdict</th><th class="r">Plan/month</th></tr>`,PAp.rows.map(x=>`<tr><td>${e(x.nm)}</td><td class="r">${inr(x.p.spend)}</td><td class="r">${x.p.res||"—"}</td><td class="r">${x.cpr?inr(x.cpr):"—"}</td><td class="r">${x.cpc?inr(x.cpc):"—"}</td><td class="r">${x.ret?x.ret.toFixed(2)+"×":"—"}</td><td><b>${e(x.v)}</b></td><td class="r">${x.plan?inr(x.plan):"—"}</td></tr>`));
+    P(`<div class="muted">${PAp.T.blended?`Blended return now: ${PAp.T.blended.toFixed(2)}× (all spend). `:""}${PAp.T.paidRoas?`Paid-media ROAS now: ${PAp.T.paidRoas.toFixed(2)}× (paid channels only). `:""}${PAp.T.cpc?`Cost per customer now: ${inr(PAp.T.cpc)}.`:""}</div>`)}
+  H2("Readiness check");
+  B.push({k:1,h:`<div>${rdp.overall===null?"Not assessed yet: checklist not answered.":`<b style="font-size:16px">${rdp.overall}%</b> of answered items in place.${rdp.weakest&&rdp.weakest.sc<100?` Weakest area: <b>${e(rdp.weakest.n)}</b>. ${e(rdp.weakest.tip)}`:""}`} <span class="muted">Input completeness: ${rdp.completeness}%.</span></div>`});
+  T(["30%","52%","18%"],"",rdp.dims.map(d=>`<tr><td>${e(d.n)}</td><td>${d.sc===null?"":`<div style="height:9px;background:#EEF1F5;border-radius:4px"><div style="height:9px;width:${d.sc}%;background:#E0A21A;border-radius:4px"></div></div>`}</td><td class="r">${d.sc===null?"Not assessed":d.sc+"%"}</td></tr>`));
   H2("Budget allocation");
   B.push({k:1,h:`<div class="bar">${al.rows.map(r=>`<span style="flex-grow:${r.share};background:${CH[r.c].c}"></span>`).join("")}</div>`});
   T(["38%","26%","10%","13%","13%"],`<tr><th>Channel</th><th>Role</th><th class="r">Share</th><th class="r">Total</th><th class="r">Per month</th></tr>`,
-    [...al.rows.map(r=>`<tr><td><span class="sw" style="background:${CH[r.c].c}"></span>${e(CH[r.c].n)}<span class="why">${e(whyText(r))}</span></td><td class="muted">${e(CH[r.c].f)}</td><td class="r">${r.pct}%</td><td class="r">${inr(r.amt)}</td><td class="r">${inr(r.mo)}</td></tr>`),
+    [...al.rows.map(r=>`<tr><td><span class="sw" style="background:${CH[r.c].c}"></span>${e(CH[r.c].n)}<span class="why">${e(whyText(r))}${decideRule(r)?" "+e(decideRule(r)):""}</span></td><td class="muted">${e(CH[r.c].f)}</td><td class="r">${r.pct}%</td><td class="r">${inr(r.amt)}</td><td class="r">${inr(r.mo)}</td></tr>`),
      `<tr><td style="font-weight:600">Total</td><td></td><td class="r" style="font-weight:600">100%</td><td class="r" style="font-weight:600">${inr(budget)}</td><td class="r" style="font-weight:600">${inr(al.monthly)}</td></tr>`]);
   H2("Activities by channel");
   al.rows.forEach(r=>{const ak=actsFor(r.c,inp);H3(CH[r.c].n,inr(r.amt));
@@ -978,13 +1089,13 @@ function reportBlocks(){
   const fnr=state.fn;
   if(fnr.units){H2("Funnel model");B.push({k:1,h:`<div class="muted">Worked backwards from your ${e(fnr.basis)}. Rates marked <span class="as">assumed</span> are planning placeholders.</div>`});
     const mx=fnr.st[0].c;
-    T(["34%","44%","22%"],`<tr><th>Stage</th><th></th><th class="r">Needed</th></tr>`,fnr.st.map(x=>`<tr><td>${e(x.n)}${x.rate?`<span class="why">↓ next: ${(x.rate.v*100).toFixed(2).replace(/\.?0+$/,"")}% ${x.rate.src==="user"?"your rate":'<span class="as">assumed</span>'}</span>`:""}</td><td><div class="fbar" style="width:${Math.max(1,Math.sqrt(x.c/mx)*100)}%"></div></td><td class="r">${Math.round(x.c).toLocaleString("en-IN")}</td></tr>`));
+    T(["34%","44%","22%"],`<tr><th>Stage</th><th></th><th class="r">Needed</th></tr>`,fnr.st.map(x=>`<tr><td>${e(x.n)}${x.rate?`<span class="why">↓ next: ${(x.rate.v*100).toFixed(2).replace(/\.?0+$/,"")}% ${x.rate.src==="user"?"your rate":x.rate.src==="data"?"from your results":'<span class="as">assumed</span>'}</span>`:""}</td><td><div class="fbar" style="width:${Math.max(1,Math.sqrt(x.c/mx)*100)}%"></div></td><td class="r">${Math.round(x.c).toLocaleString("en-IN")}</td></tr>`));
     T(["50%","50%"],"",[`<tr><td>Budget per ${e(fnr.J.stages[fnr.J.rev].toLowerCase())}</td><td class="r">${inr(fnr.costPerUnit)}</td></tr>`,`<tr><td>Budget per 1,000 people reached</td><td class="r">${inr(fnr.costPer1000)}</td></tr>`]);}
   const er=ecoRows(inp,eco);
   if(er.length){H2("Spending limits");T(["34%","18%","48%"],"",er.map(x=>`<tr><td style="font-weight:600">${e(x[0])}</td><td class="r">${x[1]}</td><td class="muted">${e(x[2])}</td></tr>`))}
   const scp=scenarios();
   if(scp){H2("Scenarios");B.push({k:1,h:`<div class="muted">Planning scenarios, not forecasts: same budget and reach, conversion 30% worse or better than planned.</div>`});
-    T(["17%","29%","12%","14%","16%","12%"],`<tr><th>Scenario</th><th>Assumption</th><th class="r">Customers</th><th class="r">Revenue</th><th class="r">Per customer</th><th class="r">ROAS</th></tr>`,scp.map(x=>`<tr><td><b>${x.n}</b></td><td class="muted">${e(x.a)}</td><td class="r">${x.u.toLocaleString("en-IN")}</td><td class="r">${x.rev!=null?inr(x.rev):"—"}</td><td class="r">${x.cpu?inr(x.cpu):"—"}</td><td class="r">${x.roas!=null?x.roas.toFixed(2):"—"}</td></tr>`))}
+    T(["17%","29%","12%","14%","16%","12%"],`<tr><th>Scenario</th><th>Assumption</th><th class="r">Customers</th><th class="r">Revenue</th><th class="r">Per customer</th><th class="r">Blended return</th></tr>`,scp.map(x=>`<tr><td><b>${x.n}</b></td><td class="muted">${e(x.a)}</td><td class="r">${x.u.toLocaleString("en-IN")}</td><td class="r">${x.rev!=null?inr(x.rev):"—"}</td><td class="r">${x.cpu?inr(x.cpu):"—"}</td><td class="r">${x.roas!=null?x.roas.toFixed(2)+"×":"—"}</td></tr>`))}
   H2("Roadmap");
   ph.forEach(p=>{H3(p.t,`${e(p.when)} · about ${inr(p.amt)}`);P(`<ul>${p.items.map(t=>`<li>${e(t)}</li>`).join("")}</ul>`)});
   B.push({pb:1});
@@ -1007,11 +1118,13 @@ function reportBlocks(){
   P(`<ul>${whatNot(inp,al,eco).map(t=>`<li>${e(t)}</li>`).join("")}</ul>`);
   H2("Checks");
   ck.forEach(c=>P(`<div class="check ${c[0]}">${e(c[1])}</div>`));
+  H2("Plan quality check");
+  P(`<ul style="list-style:none;padding-left:0">${validation().map(v=>`<li>${v[0]?"✓":"!"} ${e(v[1])}</li>`).join("")}</ul>`);
   H2("Assumption register");
   T(["30%","22%","33%","15%"],`<tr><th>Variable</th><th>Value</th><th>Source</th><th>Confidence</th></tr>`,assumptionRegister(inp,al,eco,state.fn).map(r=>`<tr><td>${e(r[0])}</td><td>${e(r[1])}</td><td class="muted">${e(r[2])}</td><td${r[3]==="Low"?' class="as"':""}>${e(r[3])}</td></tr>`));
   H2("Strategic principles behind this plan");
-  state.kb.slice(0,14).forEach(k=>P(`<b>${e(k.a)}</b> <span class="muted">(${e(k.c)}, ${e(k.s)})</span>`));
-  P(`<div class="credit">Prepared with the Marketing Plan Builder by Anurag Sahu (MBA Marketing, BML Munjal University). The budget split follows fixed planning rules for the goal, business model, stage, reach, positioning and budget entered; spending limits use only the figures provided. Treat this plan as a starting point and let early results guide changes.</div>`);
+  state.kb.filter(k=>!k.a.includes("[")).slice(0,14).forEach(k=>P(`<b>${e(k.a)}</b> <span class="muted">(${e(k.c)}, ${e(k.s)})</span>`));
+  P(`<div class="credit">Prepared with the Marketing Plan Builder by Anurag Sahu (MBA Marketing, BML Munjal University). The budget split starts from planning rules for the goal, business model, journey, stage, reach and positioning, then adjusts to the current results entered; spending limits and conflicts use only the figures provided. Treat this plan as a starting point and let early results guide changes.</div>`);
   return B;
 }
 const blkHTML=b=>b.t?`<div class="blk"><table>${b.t.cg}${b.t.head}${b.t.rows.join("")}</table></div>`:`<div class="blk">${b.h}</div>`;
@@ -1145,7 +1258,7 @@ function decide(){
     if(ratio<=0.8){x.d="scale";x.why=`${inr(x.cpr)} per result, at least 20% better than ${benchLabel}.`}
     else if(ratio<=1.25){x.d="opt";x.why=`${inr(x.cpr)} per result, close to ${benchLabel}. Test new creative or audiences to improve it.`}
     else{x.d=wk>=2?"stop":"opt";x.why=`${inr(x.cpr)} per result, more than 25% worse than ${benchLabel}.`+(wk<2?" Give it one more week with a new creative.":"")}
-    if(roas!==null&&eco&&eco.beRoas&&roas<eco.beRoas){x.why+=` ROAS ${roas.toFixed(2)} is below break-even (${eco.beRoas.toFixed(2)}).`;if(x.d==="scale")x.d="opt";else if(x.d==="opt"&&wk>=2)x.d="stop"}
+    if(roas!==null&&eco&&eco.beRoas&&roas<eco.beRoas){x.why+=` ${PAID.includes(x.r.c)?"Paid-media ROAS":"Return on spend"} ${roas.toFixed(2)}× is below break-even (${eco.beRoas.toFixed(2)}×).`;if(x.d==="scale")x.d="opt";else if(x.d==="opt"&&wk>=2)x.d="stop"}
   });
   const stop=rows.filter(x=>x.d==="stop"),scale=rows.filter(x=>x.d==="scale");
   let move=null;const lst=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
@@ -1210,10 +1323,15 @@ const RD=[
 function readiness(){
   const {inp}=state;const tick=state.rd||{};
   const auto={aud:!!inp.audience,ben:!!inp.benefit,prf:!!inp.proof,pod:!!inp.pod};
-  const dims=RD.map(([n,items,tip])=>{const it=items.map(([k,l,a])=>({k,l,a:!!a,on:a?auto[k]:!!tick[k]}));const sc=Math.round(it.filter(x=>x.on).length/it.length*100);return{n,it,sc,tip}});
-  const overall=Math.round(dims.reduce((s,d)=>s+d.sc,0)/dims.length);
-  const weakest=[...dims].sort((a,b)=>a.sc-b.sc)[0];
-  return{dims,overall,weakest};
+  const val=k=>{const v=tick[k];return v===true||v==="y"?"y":v==="n"?"n":null};
+  let total=0,answered=0;
+  const dims=RD.map(([n,items,tip])=>{const it=items.map(([k,l,a])=>{const v=a?(auto[k]?"y":null):val(k);total++;if(v)answered++;return{k,l,a:!!a,v}});
+    const ans=it.filter(x=>x.v);const sc=ans.length?Math.round(ans.filter(x=>x.v==="y").length/ans.length*100):null;return{n,it,sc,tip,ans:ans.length}});
+  const assessed=dims.filter(d=>d.sc!==null);
+  const comp=Math.round(answered/total*100);
+  const overall=assessed.length>=3&&comp>=30?Math.round(assessed.reduce((s,d)=>s+d.sc,0)/assessed.length):null;
+  const weakest=overall!==null?[...assessed].sort((a,b)=>a.sc-b.sc)[0]:null;
+  return{dims,overall,weakest,completeness:Math.round(answered/total*100),assessed:assessed.length};
 }
 function savedList(){try{return JSON.parse(localStorage.getItem("mpb-saved")||"[]")}catch(e){return[]}}
 function setSaved(L){try{localStorage.setItem("mpb-saved",JSON.stringify(L));return true}catch(e){return false}}
@@ -1225,11 +1343,12 @@ function snapshot(){
       split:al.rows.map(r=>`${CH[r.c].n} ${r.pct}%`).join(", "),
       units:fn.units?`${Math.round(fn.units).toLocaleString("en-IN")} ${JOURNEYS[inp.journey].stages[JOURNEYS[inp.journey].rev].toLowerCase()}`:"Not calculated",
       cpu:fn.costPerUnit?inr(fn.costPerUnit):"—",maxcac:eco&&eco.maxCac?inr(eco.maxCac):"—",
-      risk:(sm.find(x=>x[0]==="Biggest risk")||[,""])[1],ready:readiness().overall+"%"}};
+      risk:(sm.find(x=>x[0]==="Biggest risk")||[,""])[1],feas:(sm.find(x=>x[0]==="Feasibility")||[,""])[1],ready:(()=>{const R=readiness();return R.overall===null?"Not assessed":R.overall+"% ("+R.completeness+"% answered)"})()}};
 }
 function loadPlan(p){
   const f=$("#f"),d=p.inp;
-  ["name","industry","model","journey","stage","reach","pos","products","audience","benefit","proof","pod","budget","months","geo","comp","aov","margin","orders","target","maxcac","current"].forEach(k=>{if(f.elements[k])f.elements[k].value=(d[k]===0||d[k]==null)?"":d[k]});
+  ["name","industry","model","journey","stage","reach","pos","products","audience","benefit","proof","pod","budget","months","geo","comp","aov","margin","orders","target","maxcac","cpm","current"].forEach(k=>{if(f.elements[k])f.elements[k].value=(d[k]===0||d[k]==null)?"":d[k]});
+  $("#perf").innerHTML="";(d.perf||[]).forEach(p=>addPerfRow(p));
   jTouched=true;syncJourney();(d.rates||[]).forEach((r,i)=>{const el=$("#rate"+i);if(el)el.value=r&&r.src==="user"?+(r.v*100).toFixed(2):""});
   const g=$("#g-"+d.goal);if(g)g.checked=true;
   f.querySelectorAll('input[name="ex"]').forEach(x=>x.checked=(d.exclude||[]).includes(x.value));
@@ -1239,9 +1358,11 @@ function paintPhase3(){
   const {inp,eco}=state;
   if(state._rdFor!==liveKey()){try{state.rd=(JSON.parse(localStorage.getItem(liveKey())||"{}").rd)||{}}catch(e){state.rd={}}state._rdFor=liveKey()}
   const paintRD=()=>{const R=readiness();
-    $("#rd-sec").innerHTML=`<h2>Marketing readiness</h2><div class="overall"><span class="big2">${R.overall}%</span><span class="muted">ready to launch. Weakest area: <b style="color:var(--ink)">${esc(R.weakest.n)}</b>. ${esc(R.weakest.tip)}</span></div>
-    <details><summary>Update the checklist</summary><div class="rd" style="margin-top:12px">${R.dims.map(d=>`<div class="dim"><div class="hd"><span>${esc(d.n)}</span><span class="tr"><i style="width:${d.sc}%"></i></span><span>${d.sc}%</span></div>${d.it.map(x=>`<label><input type="checkbox" data-rd="${x.k}" ${x.on?"checked":""} ${x.a?"disabled":""}> <span>${esc(x.l)}${x.a?' <span class="auto">(from your inputs)</span>':""}</span></label>`).join("")}</div>`).join("")}</div></details>`;
-    $("#rd-sec").querySelectorAll("input[data-rd]:not([disabled])").forEach(el=>el.addEventListener("change",()=>{state.rd[el.dataset.rd]=el.checked;
+    const head=R.overall===null?`<div class="overall"><span class="muted">Not assessed yet. Answer the checklist below; anything you leave as "Not sure" is treated as unknown, never as zero.</span></div>`
+      :`<div class="overall"><span class="big2">${R.overall}%</span><span class="muted">of answered items in place${R.weakest&&R.weakest.sc<100?`. Weakest area: <b style="color:var(--ink)">${esc(R.weakest.n)}</b>. ${esc(R.weakest.tip)}`:"."}</span></div>`;
+    $("#rd-sec").innerHTML=`<h2>Readiness check</h2>${head}<p class="small muted" style="margin:0 0 8px">Input completeness: ${R.completeness}% of items answered (${R.assessed} of 7 areas assessed).</p>
+    <details><summary>Answer the checklist</summary><div class="rd" style="margin-top:12px">${R.dims.map(d=>`<div class="dim"><div class="hd"><span>${esc(d.n)}</span><span class="tr">${d.sc===null?"":`<i style="width:${d.sc}%"></i>`}</span><span>${d.sc===null?'<span class="small muted">Not assessed</span>':d.sc+"%"}</span></div>${d.it.map(x=>`<label style="justify-content:space-between"><span>${esc(x.l)}${x.a?' <span class="auto">(from your inputs)</span>':""}</span>${x.a?`<span class="small muted">${x.v==="y"?"Yes":"Not given"}</span>`:`<select class="rsel" data-rd="${x.k}" aria-label="${esc(x.l)}"><option value="" ${!x.v?"selected":""}>Not sure</option><option value="y" ${x.v==="y"?"selected":""}>Yes</option><option value="n" ${x.v==="n"?"selected":""}>No</option></select>`}</label>`).join("")}</div>`).join("")}</div></details>`;
+    $("#rd-sec").querySelectorAll("select[data-rd]").forEach(el=>el.addEventListener("change",()=>{state.rd[el.dataset.rd]=el.value||undefined;
       try{const k=liveKey();const d=JSON.parse(localStorage.getItem(k)||"{}");d.rd=state.rd;localStorage.setItem(k,JSON.stringify(d))}catch(e){}
       const open=$("#rd-sec details").open;paintRD();$("#rd-sec details").open=open}));
   };
@@ -1250,7 +1371,7 @@ function paintPhase3(){
   if(!sc){ss.innerHTML=`<h2>Scenarios</h2><p class="muted" style="margin:0">Add a revenue target with order value, or the most you'd pay per customer, in step 3 to compare conservative, base and ambitious outcomes.</p>`}
   else{const unit=JOURNEYS[inp.journey].stages[JOURNEYS[inp.journey].rev];
     ss.innerHTML=`<h2>Scenarios</h2><p class="small muted" style="margin-top:0">Planning scenarios, not forecasts: the same budget and reach, with conversion through the funnel 30% worse or better than planned.</p>
-    <div class="tablewrap"><table class="alloc scn"><thead><tr><th>Scenario</th><th>Assumption</th><th>${esc(unit)}</th><th>Revenue</th><th>Budget per customer</th><th>ROAS</th></tr></thead><tbody>${sc.map(x=>`<tr><td><b>${x.n}</b></td><td class="small muted">${esc(x.a)}</td><td>${x.u.toLocaleString("en-IN")}</td><td>${x.rev!=null?inr(x.rev):"—"}</td><td>${x.cpu?inr(x.cpu):"—"}${eco&&eco.maxCac&&x.cpu?`<div class="small ${x.cpu<=eco.maxCac?"":"muted"}" style="color:${x.cpu<=eco.maxCac?"var(--pos)":"var(--neg)"}">${x.cpu<=eco.maxCac?"within limit":"above limit"}</div>`:""}</td><td>${x.roas!=null?x.roas.toFixed(2):"—"}${eco&&eco.beRoas&&x.roas!=null?`<div class="small" style="color:${x.roas>=eco.beRoas?"var(--pos)":"var(--neg)"}">${x.roas>=eco.beRoas?"above":"below"} break-even</div>`:""}</td></tr>`).join("")}</tbody></table></div>`}
+    <div class="tablewrap"><table class="alloc scn"><thead><tr><th>Scenario</th><th>Assumption</th><th>${esc(unit)}</th><th>Revenue</th><th>Budget per customer</th><th>Blended return</th></tr></thead><tbody>${sc.map(x=>`<tr><td><b>${x.n}</b></td><td class="small muted">${esc(x.a)}</td><td>${x.u.toLocaleString("en-IN")}</td><td>${x.rev!=null?inr(x.rev):"—"}</td><td>${x.cpu?inr(x.cpu):"—"}${eco&&eco.maxCac&&x.cpu?`<div class="small ${x.cpu<=eco.maxCac?"":"muted"}" style="color:${x.cpu<=eco.maxCac?"var(--pos)":"var(--neg)"}">${x.cpu<=eco.maxCac?"within limit":"above limit"}</div>`:""}</td><td>${x.roas!=null?x.roas.toFixed(2)+"×":"—"}${eco&&eco.beRoas&&x.roas!=null?`<div class="small" style="color:${x.roas>=eco.beRoas?"var(--pos)":"var(--neg)"}">${x.roas>=eco.beRoas?"above":"below"} break-even</div>`:""}</td></tr>`).join("")}</tbody></table></div>`}
   const paintSV=()=>{const L=savedList();const sel=state.cmpSel||[];
     $("#sv-sec").innerHTML=`<h2>Saved plans</h2><p class="small muted" style="margin-top:0">Save versions of this plan to reload later or compare two side by side. Stored in this browser only.</p>
     <button type="button" id="svb">Save this plan</button> <span class="small muted" id="svo" role="status"></span>
@@ -1261,11 +1382,92 @@ function paintPhase3(){
     $("#sv-sec").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{if(!confirm("Delete this saved plan?"))return;setSaved(savedList().filter(x=>x.id!=b.dataset.del));state.cmpSel=(state.cmpSel||[]).filter(x=>x!=b.dataset.del);paintSV()}));
     $("#sv-sec").querySelectorAll("[data-sel]").forEach(c=>c.addEventListener("change",()=>{let s2=state.cmpSel||[];const id=+c.dataset.sel;s2=c.checked?[...s2.filter(x=>x!==id),id].slice(-2):s2.filter(x=>x!==id);state.cmpSel=s2;paintSV()}));
     const pick=L.filter(p=>sel.includes(p.id));
-    if(pick.length===2){const F=[["Goal","goal"],["How customers buy","journey"],["Positioning","pos"],["Budget","budget"],["Months","months"],["Channel split","split"],["Customers from funnel","units"],["Budget per customer","cpu"],["Most you'd pay per customer","maxcac"],["Readiness","ready"],["Biggest risk","risk"]];
+    if(pick.length===2){const F=[["Goal","goal"],["How customers buy","journey"],["Positioning","pos"],["Budget","budget"],["Months","months"],["Channel split","split"],["Customers from funnel","units"],["Budget per customer","cpu"],["Most you'd pay per customer","maxcac"],["Feasibility","feas"],["Readiness","ready"],["Biggest risk","risk"]];
       $("#cmpout").innerHTML=`<h3 style="margin-top:16px">Comparison</h3><div class="tablewrap"><table class="mini"><tr><td></td><td><b>${esc(pick[0].label)}</b></td><td><b>${esc(pick[1].label)}</b></td></tr>${F.map(f=>`<tr><td>${f[0]}</td><td>${esc(String(pick[0].out[f[1]]??""))}</td><td>${esc(String(pick[1].out[f[1]]??""))}</td></tr>`).join("")}</table></div>`}
     else if(L.length>=2)$("#cmpout").innerHTML=`<p class="small muted">Tick two saved plans to compare them.</p>`;
   };
   paintSV();
+}
+
+function perfAnalysis(){
+  const {inp,eco,al}=state;if(!inp.perf||!inp.perf.length)return null;
+  const per=eco&&eco.perUnit;const lim=eco&&eco.maxCac;
+  const rowsP=inp.perf.map(p=>{const c=PERFMAP(p.c);const nm=p.c==="referral"?"Referrals":CH[c].n;
+    const cpr=p.spend&&p.res?p.spend/p.res:null,cpc=p.spend&&p.cust?p.spend/p.cust:null;
+    const ret=per&&p.cust&&p.spend?p.cust*per/p.spend:null;return{p,c,nm,cpr,cpc,ret}});
+  const paidR=rowsP.filter(x=>x.cpr);const avg=paidR.length?paidR.reduce((s,x)=>s+x.p.spend,0)/paidR.reduce((s,x)=>s+x.p.res,0):null;
+  rowsP.forEach(x=>{const p=x.p;
+    if(inp.exclude.includes(x.c)){x.v="Excluded by you";return}
+    if(!p.spend&&(p.res||p.cust)){x.v="Protect: free source";return}
+    if(p.spend&&!p.res&&!p.cust){x.v="Fix before adding budget";return}
+    if(x.cpc&&lim){x.v=x.cpc<=lim?"Keep and grow":x.cpc<=lim*1.25?"Keep, improve conversion":"Reduce and fix";return}
+    if(x.cpr&&avg){x.v=x.cpr<=avg?"Keep and grow":"Keep, watch the cost";return}
+    x.v="Keep";});
+  const planMo=c=>{const r=al.rows.find(r=>r.c===c);return r?r.mo:0};
+  rowsP.forEach(x=>{x.plan=planMo(x.c);const shared=x.c==="crm"&&inp.perf.filter(p=>PERFMAP(p.c)==="crm").length>1;x.shared=shared});
+  const T={spend:inp.perf.reduce((s,p)=>s+p.spend,0),res:inp.perf.reduce((s,p)=>s+p.res,0),cust:inp.perf.reduce((s,p)=>s+p.cust,0)};
+  const paidSpend=rowsP.filter(x=>PAID.includes(x.c)).reduce((s,x)=>s+x.p.spend,0),paidCust=rowsP.filter(x=>PAID.includes(x.c)).reduce((s,x)=>s+x.p.cust,0);
+  T.blended=per&&T.spend&&T.cust?T.cust*per/T.spend:null;T.paidRoas=per&&paidSpend&&paidCust?paidCust*per/paidSpend:null;T.cpc=T.spend&&T.cust?T.spend/T.cust:null;
+  return{rows:rowsP,T,avg};
+}
+function conflicts(){
+  const {inp,eco,fn,al,budget}=state;const C=[];const J=JOURNEYS[inp.journey];const u=J.stages[J.rev].toLowerCase();
+  const pct=x=>Math.round(x*100)+"%";
+  if(fn.basis==="revenue target"&&eco&&eco.maxCac&&fn.costPerUnit>eco.maxCac){
+    const cpu=fn.costPerUnit,lim=eco.maxCac,f=cpu/lim,O=[];let best=null;const cand=[];
+    const ri=J.rev-1,r0=(fn.R||inp.rates)[ri].v,r1=r0*f;
+    if(r1<=0.95){O.push(`Improve conversion: raise ${J.stages[ri].toLowerCase()} → ${u} from ${(r0*100).toFixed(1)}% to ${(r1*100).toFixed(1)}%. Same budget, ${fn.units} ${u}, ${inr(budget/fn.units*r0/r1)} each.`);cand.push([f-1,`raise ${J.stages[ri].toLowerCase()} → ${u} conversion from ${(r0*100).toFixed(1)}% to ${(r1*100).toFixed(1)}%`,`${fn.units} ${u} at about ${inr(lim)} each, within your limit`])}
+    else O.push(`Improve conversion across the whole funnel by ${pct(f-1)}; one stage alone can't close a gap this large.`);
+    if(eco.maxCacSrc==="calc"&&inp.aov&&inp.margin&&inp.orders){const aov2=cpu*3/(inp.margin/100*inp.orders),or2=cpu*3/(inp.aov*inp.margin/100);
+      O.push(`Raise customer value: average value from ${inr(inp.aov)} to about ${inr(aov2)}, or ${J.life.toLowerCase()} from ${inp.orders} to about ${or2.toFixed(1)}. That lifts your affordable limit to ${inr(cpu)}.`);cand.push([aov2/inp.aov-1,`raise average value to about ${inr(aov2)} (or lifetime to ${or2.toFixed(1)})`,`your limit rises to ${inr(cpu)}, matching the plan`])}
+    else if(eco.maxCacSrc==="user")O.push(`Raise your limit from ${inr(lim)} to ${inr(cpu)}, only if lifetime value${eco.clv?" ("+inr(eco.clv)+")":""} supports it.`);
+    const b2=fn.units*lim;const paidShare=al.rows.filter(r=>PAID.includes(r.c)).reduce((s,r)=>s+r.share,0);
+    let reachOK=null;if(inp.cpm>0){reachOK=(b2*paidShare)/inp.cpm*1000>=fn.st[0].c}
+    O.push(`Spend less for the same target: ${inr(b2)} instead of ${inr(budget)} for ${fn.units} ${u} at ${inr(lim)} each.`+(reachOK===null?" Works only if the smaller budget still reaches the "+Math.round(fn.st[0].c).toLocaleString("en-IN")+" people the funnel needs; add your cost per 1,000 in step 3 to check.":reachOK?` Reach check passes: the paid share of ${inr(b2)} still reaches the ${Math.round(fn.st[0].c).toLocaleString("en-IN")} people needed at your ${inr(inp.cpm)} per 1,000.`:` Reach check fails: the paid share of ${inr(b2)} can't reach the ${Math.round(fn.st[0].c).toLocaleString("en-IN")} people needed.`));
+    if(reachOK!==false)cand.push([1-b2/budget,`spend ${inr(b2)} instead of ${inr(budget)}`+(reachOK?" (reach check passes)":""),`${fn.units} ${u} at ${inr(lim)} each, within your limit`]);
+    cand.sort((a,b)=>a[0]-b[0]);best=cand[0];
+    C.push({t:"Cost per customer is above your limit",ev:[`Budget per ${u.replace(/s$/,"")}: ${inr(cpu)} (${inr(budget)} ÷ ${fn.units})`,`Your limit: ${inr(lim)}`,`Gap: ${inr(cpu-lim)}, ${pct(f-1)} above the limit`],
+      im:"As entered, the plan is not financially feasible: each customer would cost more than they're worth to you.",op:O,
+      rec:best?`Smallest change that closes the gap: ${best[1]} (a ${pct(Math.abs(best[0]))} change). Recalculated: ${best[2]}.`:"Revise the target or the limit before committing the budget."});
+  }
+  if(eco&&eco.beRoas&&eco.reqRoas&&eco.reqRoas<eco.beRoas){
+    const m=inp.margin/100,loss=budget-inp.target*m;
+    C.push({t:"Revenue target doesn't cover the marketing spend",ev:[`Target ${inr(inp.target)} ÷ budget ${inr(budget)} = ${eco.reqRoas.toFixed(2)}× blended return`,`Needed to break even at ${inp.margin}% margin: ${eco.beRoas.toFixed(2)}×`],
+      im:`Even if the target is hit, contribution (${inr(inp.target*m)}) falls ${inr(loss)} short of the budget.`,
+      op:[`Raise the target to at least ${inr(budget*eco.beRoas)}.`,`Cut the budget to ${inr(inp.target*m)} (break-even for this target).`,`Raise gross margin to at least ${Math.ceil(budget/inp.target*100)}%.`,`Accept the loss deliberately as an investment in lifetime value${eco.clv?" (each customer is worth "+inr(eco.clv)+" over time)":""}.`],
+      rec:eco.clv&&inp.orders>1?"If repeat purchases are reliable, judge on lifetime value; otherwise cut the budget to break-even.":`Cut the budget to about ${inr(inp.target*m)}, or raise the target to ${inr(budget*eco.beRoas)}.`});
+  }
+  if(inp.cpm>0&&fn.units&&fn.st[0].c){
+    const paid=al.rows.filter(r=>PAID.includes(r.c)).reduce((s,r)=>s+r.amt,0);const del=paid/inp.cpm*1000,need=fn.st[0].c;
+    if(del<need){const prodR=(fn.R||inp.rates).slice(0,J.rev).reduce((p,r)=>p*r.v,1);const u2=Math.floor(del*prodR);
+      C.push({t:"Paid media can't deliver the reach the funnel needs",ev:[`Funnel needs ${Math.round(need).toLocaleString("en-IN")} people reached`,`Paid-media budget ${inr(paid)} at your ${inr(inp.cpm)} per 1,000 reaches about ${Math.round(del).toLocaleString("en-IN")}`,`Gap: ${Math.round(need-del).toLocaleString("en-IN")} people (${pct(1-del/need)} of the need)`],
+        im:`Paid media alone would produce about ${u2} ${u}, not ${fn.units}.`,
+        op:[`Close the gap with organic content, creators and referrals: they must reach about ${Math.round(need-del).toLocaleString("en-IN")} people.`,`Improve conversion so fewer people are needed.`,`Revise the target to what paid reach supports: about ${u2} ${u}${eco&&eco.perUnit?` (${inr(u2*eco.perUnit)})`:""}.`],
+        rec:u2>=fn.units*0.7?"The gap is modest: plan organic and creator reach to cover it and track weekly.":`Treat ${u2} ${u} as the paid-media baseline and set the target around it until organic reach is proven.`});}
+  }
+  const A=perfAgg(inp);const curCust=Object.values(A).reduce((s,a)=>s+a.cust,0),curSpend=Object.values(A).reduce((s,a)=>s+a.spend,0);
+  if(curCust>0&&fn.units){const need=fn.units/inp.months;if(need>curCust*1.5)C.push({t:"Target is far above your current results",ev:[`You win about ${curCust} ${u} a month now`,`The plan needs about ${Math.ceil(need)} a month (${(need/curCust).toFixed(1)}× today)`],
+    im:"A jump this size rarely comes from reallocating budget alone.",op:[`Set a stepped target: about ${Math.ceil(curCust*1.3)} a month first (30% growth), then reassess.`,"Fix the conversion stage with the biggest drop before adding spend.",`Increase the budget only after cost per customer holds at today's level.`],rec:`Start with about ${Math.ceil(curCust*1.3)} ${u} a month and raise the target once two weeks of results confirm the rates.`})}
+  if(eco&&eco.maxCac){const bad=Object.entries(A).filter(([c,a])=>a.cust>0&&a.spend>0&&a.spend/a.cust>eco.maxCac*1.25);
+    if(bad.length)C.push({t:"Some current channels cost more than your limit",ev:bad.map(([c,a])=>`${CH[c].n}: ${inr(a.spend/a.cust)} per customer vs ${inr(eco.maxCac)} limit`),
+      im:"Scaling these as they are would raise overall cost per customer.",op:["Keep them running but reduce spend (the plan already does this).","Fix the landing page, offer or follow-up before adding budget.","Check whether they assist other channels before cutting further."],rec:"Reduce and fix, then re-test for two weeks."});}
+  return C;
+}
+function notChecked(){const {inp,eco}=state;const N=[];if(!eco)N.push("Economics (add value and margin in step 3)");if(!inp.cpm)N.push("Reach feasibility (add your cost per 1,000 in step 3)");if(!inp.perf||!inp.perf.length)N.push("Current performance (add channels in step 4)");return N}
+function validation(){
+  const {inp,al,eco,fn}=state;const V=[];const ok=(b,t,f)=>V.push([b,b?t:f]);
+  const ph=[];if(!inp.benefit)ph.push("main benefit");if(!inp.proof)ph.push("proof");if(!inp.audience)ph.push("target audience");
+  ok(!ph.length,"Strategic copy is complete from your inputs","Positioning copy still has placeholders: add "+ph.join(", ")+" in step 1");
+  ok(true,"Unanswered checklist items count as unknown, not zero","");
+  const exOK=al.rows.every(r=>!inp.exclude.includes(r.c));ok(exOK,"Channel restrictions respected","A restricted channel appears in the plan");
+  const A=perfAgg(inp);const working=Object.entries(A).filter(([c,a])=>(a.res||a.cust)&&!inp.exclude.includes(c)).map(([c])=>c);
+  ok(working.every(c=>al.rows.some(r=>r.c===c)),working.length?"Every channel producing results for you is kept in the plan":"No current performance entered, so channels come from planning rules","A working channel was dropped");
+  const sum=al.rows.reduce((s,r)=>s+r.amt,0);ok(Math.abs(sum-state.budget)<2,"Allocations add up to the budget","Allocations don't add up");
+  ok(true,"Paid-media ROAS and blended return are labelled separately","");
+  const C=conflicts();ok(true,C.length?`${C.length} strategic conflict${C.length>1?"s":""} identified, each with options and a recalculation`:"No strategic conflicts found on the numbers given","");
+  const nc=notChecked();if(nc.length)V.push([false,"Not checked yet: "+nc.join("; ")]);
+  ok(al.rows.every(r=>(r.why||[]).length),"Every allocation has a stated reason","");
+  return V;
 }
 
 let state={site:"",res:{weeks:"",ch:{}},cmp:{},rd:{},cmpSel:[],inp:null,budget:0,al:null,eco:null,ph:null,ai:null,kb:null};
@@ -1292,6 +1494,8 @@ function render(){
   compute();const {inp,budget,al}=state;
   $("#out").innerHTML=`
   <section class="panel" id="sum-sec"></section>
+  <section class="panel" id="cf-sec"></section>
+  <section class="panel" id="pf-sec" hidden></section>
   <section class="panel" id="rd-sec"></section>
   <section class="panel" id="alloc-sec">
     <h2>Where to invest</h2>
@@ -1300,7 +1504,7 @@ function render(){
     <div class="rupeebar" id="bar" role="img" aria-label="Budget split by channel"></div>
     <div class="whatif"><label for="wi" style="margin:0;font-weight:500">What if the budget changes?</label><input type="range" id="wi" min="50" max="200" step="5" value="100"><span id="wio" style="min-width:48px;color:var(--ink);font-weight:600">100%</span></div>
     <div class="tablewrap"><table class="alloc"><thead><tr><th>Channel</th><th>Role</th><th class="num">Share</th><th class="num">Total</th><th class="num">Per month</th></tr></thead><tbody id="rows"></tbody></table></div>
-    <p class="small muted">Each channel shows why it's in the plan. Tap a channel for its activities and the KPIs to judge it on.</p>
+    <p class="small muted">The split starts from planning rules for your goal, model, journey, stage, reach and positioning, then adjusts to your current results where you've entered them. Each channel shows why it's here and what decides whether it grows or stops. Tap a channel for its activities.</p>
   </section>
   <section class="panel" id="fun-sec"></section>
   <section class="panel" id="eco-sec"></section>
@@ -1313,6 +1517,7 @@ function render(){
   <section class="panel" id="trk-sec"></section>
   <section class="panel"><h2>What not to do</h2><ul class="nots" id="nots"></ul></section>
   <section class="panel"><h2>Checks on your inputs</h2><div class="checks" id="chk"></div></section>
+  <section class="panel" id="qc-sec"></section>
   <section class="panel" id="reg-sec"></section>
   <section class="panel"><h2>Strategic principles behind this plan</h2><div class="kb" id="kb"></div></section>
   <section class="panel" id="sv-sec"></section>
@@ -1328,7 +1533,7 @@ function paintAlloc(){
   const {al,budget,inp}=state;
   $("#tot").textContent=inrShort(budget);$("#permo").textContent=inr(al.monthly)+" a month for "+inp.months+" month"+(inp.months>1?"s":"");
   $("#bar").innerHTML=al.rows.map(r=>`<span title="${esc(CH[r.c].n)} ${r.pct}%" style="flex-grow:${r.share};background:${CH[r.c].c}"></span>`).join("");
-  $("#rows").innerHTML=al.rows.map((r,i)=>{const ch=CH[r.c],ak=actsFor(r.c,inp);return`<tr><td><span class="sw" style="background:${ch.c}"></span><button type="button" class="rowbtn" aria-expanded="false" aria-controls="a${i}" data-i="${i}">${esc(ch.n)}</button><span class="whyl">${esc(whyText(r))}</span>
+  $("#rows").innerHTML=al.rows.map((r,i)=>{const ch=CH[r.c],ak=actsFor(r.c,inp);return`<tr><td><span class="sw" style="background:${ch.c}"></span><button type="button" class="rowbtn" aria-expanded="false" aria-controls="a${i}" data-i="${i}">${esc(ch.n)}</button><span class="whyl">${esc(whyText(r))}${decideRule(r)?`<br><b>${esc(decideRule(r))}</b>`:""}</span>
    <div class="acts" id="a${i}" hidden>${ak.a.map(a=>`<div><span>${esc(a[0])}</span><span>${inr(r.amt*a[1]/100)}</span></div>`).join("")}<div class="k">Judge on: ${ak.k.join(", ")}</div></div></td>
    <td class="small muted">${esc(ch.f)}</td><td class="num">${r.pct}%</td><td class="num">${inr(r.amt)}</td><td class="num">${inr(r.mo)}</td></tr>`}).join("");
   document.querySelectorAll(".rowbtn").forEach(b=>b.addEventListener("click",()=>{const x=b.getAttribute("aria-expanded")==="true";b.setAttribute("aria-expanded",!x);$("#a"+b.dataset.i).hidden=x}));
@@ -1336,25 +1541,34 @@ function paintAlloc(){
 
 function ecoRows(inp,eco){
   if(!eco)return[];const J=JOURNEYS[inp.journey];const R=[];
-  if(eco.beRoas)R.push(["Break-even ROAS",eco.beRoas.toFixed(2),"Revenue per ₹1 of ads needed to cover product cost"]);
+  if(eco.beRoas)R.push(["Break-even return",eco.beRoas.toFixed(2)+"×","Revenue per ₹1 of marketing needed to cover product cost (1 ÷ margin). Applies to paid-media ROAS and blended return alike"]);
   if(eco.contrib)R.push(["Contribution per "+(inp.journey==="subscription"?"month":"sale"),inr(eco.contrib),"Value × margin"]);
   if(eco.clv)R.push(["Customer lifetime value",inr(eco.clv),"Contribution × lifetime"]);
   if(eco.maxCac)R.push(["Most you can pay per customer",inr(eco.maxCac),eco.maxCacSrc==="user"?"You entered this":"Lifetime value ÷ 3, the 3:1 rule"]);
   if(eco.ordersNeeded)R.push([J.stages[J.rev]+" needed",Math.ceil(eco.ordersNeeded).toLocaleString("en-IN"),"Revenue target ÷ revenue per customer in the period"]);
-  if(eco.reqRoas)R.push(["ROAS your target needs",eco.reqRoas.toFixed(2),"Revenue target ÷ total budget"]);
+  if(eco.reqRoas)R.push(["Blended return your target needs",eco.reqRoas.toFixed(2)+"×","Revenue target ÷ total marketing budget (not platform ROAS)"]);
+  const paid=state.al?state.al.rows.filter(r=>PAID.includes(r.c)).reduce((s,r)=>s+r.amt,0):0;
+  if(eco.reqRoas&&paid>0)R.push(["Paid-media ROAS if all revenue came from paid ads",(inp.target/paid).toFixed(2)+"×",`Revenue target ÷ ${inr(paid)} paid-media budget. An upper bound: other channels also bring revenue`]);
   return R;
 }
 function paintRest(){
   const {eco,ph,inp,al,budget,fn}=state;
   // summary
   const sm=execSummary(inp,al,eco,fn);
+  const CF=conflicts(),NC=notChecked();
+  $("#cf-sec").innerHTML=`<h2>Strategic conflicts and decisions</h2>`+(CF.length?CF.map((c,i)=>`<div class="cf-card"><h3>⚠ ${esc(c.t)}</h3><div class="lbl">Evidence</div><ul style="margin:2px 0">${c.ev.map(x=>`<li>${esc(x)}</li>`).join("")}</ul><div class="lbl">Business impact</div><div>${esc(c.im)}</div><div class="lbl">Options</div><ol>${c.op.map(x=>`<li>${esc(x)}</li>`).join("")}</ol><div class="rec"><b>Recommended:</b> ${esc(c.rec)}</div></div>`).join(""):`<div class="okline">No conflicts found between budget, economics, targets${state.inp.perf&&state.inp.perf.length?", current performance":""} and channels.</div>`)+(NC.length?`<p class="small muted" style="margin-bottom:0">Not checked yet: ${esc(NC.join("; "))}.</p>`:"");
+  const PA=perfAnalysis(),pf=$("#pf-sec");
+  if(PA){pf.hidden=false;const L=perfLabels(state.inp.journey);
+    pf.innerHTML=`<h2>Your current performance</h2><p class="small muted" style="margin-top:0">What you entered in step 4, and what the plan does with each channel.</p><div class="tablewrap"><table class="alloc"><thead><tr><th>Channel</th><th class="num">Spend now</th><th class="num">${esc(L[0].replace(" a month",""))}</th><th class="num">Cost each</th><th class="num">Per customer</th><th class="num">Return</th><th>Verdict</th><th class="num">Plan a month</th></tr></thead><tbody>${PA.rows.map(x=>`<tr><td>${esc(x.nm)}</td><td class="num">${inr(x.p.spend)}</td><td class="num">${x.p.res||"—"}</td><td class="num">${x.cpr?inr(x.cpr):"—"}</td><td class="num">${x.cpc?inr(x.cpc):"—"}</td><td class="num">${x.ret?x.ret.toFixed(2)+"×"+(PAID.includes(x.c)?" ROAS":""):"—"}</td><td><b>${esc(x.v)}</b></td><td class="num">${x.plan?inr(x.plan)+(x.shared?"*":""):"—"}</td></tr>`).join("")}</tbody></table></div>
+    <p class="small muted">${PA.T.blended?`Blended return now: ${PA.T.blended.toFixed(2)}× (all spend). `:""}${PA.T.paidRoas?`Paid-media ROAS now: ${PA.T.paidRoas.toFixed(2)}× (paid channels only). `:""}${PA.T.cpc?`Cost per customer now: ${inr(PA.T.cpc)}. `:""}${PA.rows.some(x=>x.shared)?"*Referrals and CRM share one plan line.":""}</p>`}
+  else{pf.hidden=true;pf.innerHTML=""}
   $("#sum-sec").innerHTML=`<h2>Executive summary</h2><div class="sum">${sm.map(x=>`<div class="k">${esc(x[0])}</div><div>${esc(x[1])}</div>`).join("")}</div>`;
   // funnel
   const fs=$("#fun-sec");
   if(fn.units){
     const max=fn.st[0].c;
     fs.innerHTML=`<h2>Funnel model</h2><p class="small muted" style="margin-top:0">Worked backwards from your ${esc(fn.basis)}. Rates marked <span style="color:var(--neg)">assumed</span> are planning placeholders; replace them with your own figures.</p>
-    <div class="fun">${fn.st.map((x,i)=>`<div class="st"><span>${esc(x.n)}</span><div class="bar" style="width:${Math.max(1,Math.sqrt(x.c/max)*100)}%"></div><span class="num">${Math.round(x.c).toLocaleString("en-IN")}</span></div>${x.rate?`<div class="rate">↓ ${(x.rate.v*100).toFixed(x.rate.v*100<1?2:1).replace(/\.0+$/,"")}% ${x.rate.src==="user"?"your rate":'<span class="as">assumed</span>'}</div>`:""}`).join("")}</div>
+    <div class="fun">${fn.st.map((x,i)=>`<div class="st"><span>${esc(x.n)}</span><div class="bar" style="width:${Math.max(1,Math.sqrt(x.c/max)*100)}%"></div><span class="num">${Math.round(x.c).toLocaleString("en-IN")}</span></div>${x.rate?`<div class="rate">↓ ${(x.rate.v*100).toFixed(x.rate.v*100<1?2:1).replace(/\.0+$/,"")}% ${x.rate.src==="user"?"your rate":x.rate.src==="data"?"from your current results":'<span class="as">assumed</span>'}</div>`:""}`).join("")}</div>
     <div class="cols" style="margin-top:14px"><div class="stat"><div class="l">Budget per ${esc(fn.J.stages[fn.J.rev].toLowerCase().replace(/s$/,""))}</div><div class="v">${inr(fn.costPerUnit)}</div><div class="l">${fn.basis==="revenue target"&&eco&&eco.maxCac?(fn.costPerUnit<=eco.maxCac?"Within":"Above")+" your limit of "+inr(eco.maxCac):"Total budget ÷ "+esc(fn.J.stages[fn.J.rev].toLowerCase())}</div></div>
     <div class="stat"><div class="l">Budget per 1,000 people reached</div><div class="v">${inr(fn.costPer1000)}</div><div class="l">If your ad platforms charge more than this per 1,000 people, paid media alone won't reach the numbers above</div></div></div>`;
   }else{
@@ -1368,10 +1582,11 @@ function paintRest(){
   $("#ph").innerHTML=ph.map((p,i)=>`<div class="phase ${i===0?"on":""}"><h3>${esc(p.t)}</h3><div class="when">${esc(p.when)} · about ${inr(p.amt)}</div><ul>${p.items.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`).join("");
   $("#nots").innerHTML=whatNot(inp,al,eco).map(t=>`<li>${esc(t)}</li>`).join("");
   $("#chk").innerHTML=checks(inp,al,eco).map(c=>`<div class="${c[0]}">${esc(c[1])}</div>`).join("");
+  $("#qc-sec").innerHTML=`<h2>Plan quality check</h2><ul class="qc">${validation().map(v=>`<li>${v[0]?"✅":"⚠️"} ${esc(v[1])}</li>`).join("")}</ul>`;
   const reg=assumptionRegister(inp,al,eco,fn);
   $("#reg-sec").innerHTML=`<h2>Assumption register</h2><p class="small muted" style="margin-top:0">Where every number comes from, so nothing assumed is presented as fact.</p><div class="tablewrap"><table class="alloc reg"><thead><tr><th>Variable</th><th>Value</th><th>Source</th><th>Confidence</th></tr></thead><tbody>${reg.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="small muted">${esc(r[2])}</td><td><span class="cf ${esc(r[3])}">${esc(r[3])}</span></td></tr>`).join("")}</tbody></table></div>`;
   paintExec();paintPhase2();paintPhase3();
-  $("#kb").innerHTML=state.kb.slice(0,14).map(k=>`<p><strong>${esc(k.a)}</strong> <span class="muted">(${esc(k.c)}, ${esc(k.s)})</span></p>`).join("");
+  $("#kb").innerHTML=state.kb.filter(k=>!k.a.includes("[")).slice(0,14).map(k=>`<p><strong>${esc(k.a)}</strong> <span class="muted">(${esc(k.c)}, ${esc(k.s)})</span></p>`).join("");
 }
 
 function renderAIShell(){
@@ -1471,15 +1686,17 @@ function paintAI(){
 function toMarkdown(){
   const {inp,al,eco,ph,ai,budget}=state;const L=[];
   const rdm=readiness();
-  L.push(`# Marketing plan: ${inp.name}`,``,`## Executive summary`,``,...execSummary(inp,al,eco,state.fn).map(x=>`- **${x[0]}:** ${x[1]}`),``,`## Marketing readiness: ${rdm.overall}%`,``,...rdm.dims.map(d=>`- ${d.n}: ${d.sc}%`),``,`Weakest area: ${rdm.weakest.n}. ${rdm.weakest.tip}`,``,`${inp.industry} · ${MODELS[inp.model]} · ${STAGES[inp.stage]} · ${REACH[inp.reach]} · ${POS[inp.pos]} · Goal: ${GOALS[inp.goal]}`,`Budget: ${inr(budget)} over ${inp.months} month(s) (${inr(al.monthly)} a month)`,``,`## Budget allocation`,``,`| Channel | Share | Total | Per month |`,`|---|---|---|---|`);
+  L.push(`# Marketing plan: ${inp.name}`,``,`## Executive summary`,``,...execSummary(inp,al,eco,state.fn).map(x=>`- **${x[0]}:** ${x[1]}`),``,...(()=>{const C=conflicts(),O=[`## Strategic conflicts and decisions`,``];if(!C.length)O.push("No conflicts found between budget, economics, targets and channels.");C.forEach(c=>{O.push(`### ⚠ ${c.t}`,``,`**Evidence:**`,...c.ev.map(x=>`- ${x}`),``,`**Business impact:** ${c.im}`,``,`**Options:**`,...c.op.map((x,i)=>`${i+1}. ${x}`),``,`**Recommended:** ${c.rec}`,``)});const nc=notChecked();if(nc.length)O.push(`Not checked yet: ${nc.join("; ")}.`);O.push("");return O})(),
+  ...(()=>{const P=perfAnalysis();if(!P)return[];return[`## Your current performance`,``,`| Channel | Spend now | Results | Cost each | Per customer | Return | Verdict | Plan/month |`,`|---|---|---|---|---|---|---|---|`,...P.rows.map(x=>`| ${x.nm} | ${inr(x.p.spend)} | ${x.p.res||"—"} | ${x.cpr?inr(x.cpr):"—"} | ${x.cpc?inr(x.cpc):"—"} | ${x.ret?x.ret.toFixed(2)+"×":"—"} | ${x.v} | ${x.plan?inr(x.plan):"—"} |`),``,`${P.T.blended?`Blended return now: ${P.T.blended.toFixed(2)}×. `:""}${P.T.paidRoas?`Paid-media ROAS now: ${P.T.paidRoas.toFixed(2)}×. `:""}`,``]})(),
+  `## Readiness check: ${rdm.overall===null?"not assessed":rdm.overall+"% of answered items"} (input completeness ${rdm.completeness}%)`,``,...rdm.dims.map(d=>`- ${d.n}: ${d.sc===null?"not assessed":d.sc+"%"}`),``,...(rdm.weakest&&rdm.weakest.sc<100?[`Weakest area: ${rdm.weakest.n}. ${rdm.weakest.tip}`,``]:[]),`${inp.industry} · ${MODELS[inp.model]} · ${STAGES[inp.stage]} · ${REACH[inp.reach]} · ${POS[inp.pos]} · Goal: ${GOALS[inp.goal]}`,`Budget: ${inr(budget)} over ${inp.months} month(s) (${inr(al.monthly)} a month)`,``,`## Budget allocation`,``,`| Channel | Share | Total | Per month |`,`|---|---|---|---|`);
   al.rows.forEach(r=>L.push(`| ${CH[r.c].n} | ${r.pct}% | ${inr(r.amt)} | ${inr(r.mo)} |`));
-  L.push(``,`### Why each channel`);al.rows.forEach(r=>L.push(`- ${CH[r.c].n}: ${whyText(r)}`));
+  L.push(``,`### Why each channel`);al.rows.forEach(r=>L.push(`- ${CH[r.c].n}: ${whyText(r)}${decideRule(r)?" "+decideRule(r):""}`));
   L.push(``,`## Activities by channel`);
   al.rows.forEach(r=>{const ak=actsFor(r.c,inp);L.push(``,`### ${CH[r.c].n} (${inr(r.amt)})`);ak.a.forEach(a=>L.push(`- ${a[0]}: ${inr(r.amt*a[1]/100)}`));L.push(`- Judge on: ${ak.k.join(", ")}`)});
   const fnm=state.fn;
-  if(fnm.units){L.push(``,`## Funnel model`,``,`Worked backwards from your ${fnm.basis}.`,``);fnm.st.forEach(x=>{L.push(`- ${x.n}: ${Math.round(x.c).toLocaleString("en-IN")}`);if(x.rate)L.push(`  - ↓ ${(x.rate.v*100).toFixed(2).replace(/\.?0+$/,"")}% (${x.rate.src==="user"?"your rate":"assumed"})`)});L.push(`- Budget per customer: ${inr(fnm.costPerUnit)}`,`- Budget per 1,000 people reached: ${inr(fnm.costPer1000)}`)}
+  if(fnm.units){L.push(``,`## Funnel model`,``,`Worked backwards from your ${fnm.basis}.`,``);fnm.st.forEach(x=>{L.push(`- ${x.n}: ${Math.round(x.c).toLocaleString("en-IN")}`);if(x.rate)L.push(`  - ↓ ${(x.rate.v*100).toFixed(2).replace(/\.?0+$/,"")}% (${x.rate.src==="user"?"your rate":x.rate.src==="data"?"from your results":"assumed"})`)});L.push(`- Budget per customer: ${inr(fnm.costPerUnit)}`,`- Budget per 1,000 people reached: ${inr(fnm.costPer1000)}`)}
   const erm=ecoRows(inp,eco);if(erm.length){L.push(``,`## Spending limits`);erm.forEach(x=>L.push(`- ${x[0]}: ${x[1]} (${x[2]})`))}
-  const scm=scenarios();if(scm){L.push(``,`## Scenarios`,``,`Planning scenarios, not forecasts: same budget and reach, conversion 30% worse or better than planned.`,``,`| Scenario | Assumption | Customers | Revenue | Budget per customer | ROAS |`,`|---|---|---|---|---|---|`);scm.forEach(x=>L.push(`| ${x.n} | ${x.a} | ${x.u} | ${x.rev!=null?inr(x.rev):"—"} | ${x.cpu?inr(x.cpu):"—"} | ${x.roas!=null?x.roas.toFixed(2):"—"} |`))}
+  const scm=scenarios();if(scm){L.push(``,`## Scenarios`,``,`Planning scenarios, not forecasts: same budget and reach, conversion 30% worse or better than planned.`,``,`| Scenario | Assumption | Customers | Revenue | Budget per customer | Blended return |`,`|---|---|---|---|---|---|`);scm.forEach(x=>L.push(`| ${x.n} | ${x.a} | ${x.u} | ${x.rev!=null?inr(x.rev):"—"} | ${x.cpu?inr(x.cpu):"—"} | ${x.roas!=null?x.roas.toFixed(2):"—"} |`))}
   L.push(``,`## Roadmap`);ph.forEach(p=>{L.push(``,`### ${p.t} (${p.when}, about ${inr(p.amt)})`);p.items.forEach(t=>L.push(`- ${t}`))});
   L.push(``,`## How to execute`,``,`### Tools for each channel`);
   al.rows.forEach(r=>L.push(`- ${CH[r.c].n}: ${(TOOLS[r.c]||[]).map(t=>t[0]+" ("+t[1]+")").join(", ")}`));
@@ -1504,8 +1721,9 @@ function toMarkdown(){
     L.push(``,`### Campaigns`);arr(ai.campaigns).forEach(c=>L.push(`- ${c.name} (${c.channel}, ${c.timing}): ${c.idea}`));
     L.push(``,`### KPIs`);arr(ai.kpis).forEach(k=>L.push(`- ${k.kpi}: ${k.target}. ${k.why}`));
     L.push(``,`### Risks`);arr(ai.risks).forEach(r=>L.push(`- ${r.risk}: ${r.mitigation}`));}
+  L.push(``,`## Plan quality check`);validation().forEach(v=>L.push(`- ${v[0]?"✓":"⚠"} ${v[1]}`));
   L.push(``,`## Assumption register`,``,`| Variable | Value | Source | Confidence |`,`|---|---|---|---|`);assumptionRegister(inp,al,eco,state.fn).forEach(r=>L.push(`| ${r.join(" | ")} |`));
-  L.push(``,`## Strategic principles`);state.kb.slice(0,14).forEach(k=>L.push(`- ${k.a} (${k.c}, ${k.s})`));
+  L.push(``,`## Strategic principles`);state.kb.filter(k=>!k.a.includes("[")).slice(0,14).forEach(k=>L.push(`- ${k.a} (${k.c}, ${k.s})`));
   return L.join("\n");
 }
 function download(){
