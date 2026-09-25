@@ -620,7 +620,8 @@ const WTASK={
 const slug=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"brand";
 function templates(inp){
   const fam=FAM(inp.goal),lux=inp.pos==="luxury",nw=inp.stage==="new";
-  const nm=inp.name||"[Brand]",aud=inp.audience||"[target audience]",cat=inp.industry||"[category]",prod=inp.products||"[product or service]";
+  const clean=t=>{t=String(t||"").trim().replace(/[\s.!?;,:]+$/,"");return /^[A-Z][a-z]/.test(t)?t[0].toLowerCase()+t.slice(1):t};
+  const nm=inp.name||"[Brand]",aud=clean(inp.audience)||"[target audience]",cat=clean(inp.industry)||"[category]",prod=clean(inp.products)||"[product or service]";
   const T=[];
   const lc=t=>/^[A-Z][a-z]/.test(t)?t[0].toLowerCase()+t.slice(1):t;
   const audL=lc(aud),catL=inp.industry?lc(inp.industry)+" brand":"[category]";
@@ -725,6 +726,157 @@ function downloadKPI(){
   catch(e){o.textContent="Download failed."}
 }
 
+const REPCSS=`
+.rep{font-family:"IBM Plex Sans","Segoe UI",Arial,sans-serif;color:#14213D;font-size:11.5px;line-height:1.5;background:#fff;width:718px}
+.rep *{box-sizing:border-box}
+.rep .blk{padding:0 0 8px}
+.rep .cover{background:#14213D;color:#fff;padding:26px 28px 22px}
+.rep .cover .eyebrow{color:#E0A21A;font-size:11px;font-weight:600}
+.rep .cover h1{font-family:"Bricolage Grotesque","Segoe UI",Arial,sans-serif;font-size:30px;line-height:1.1;margin:6px 0 4px;color:#fff}
+.rep .cover .meta{color:#C9D1DE;font-size:11.5px}
+.rep .cover .kpis{display:flex;gap:10px;margin-top:16px}
+.rep .cover .kpis div{flex:1;border-top:2px solid #E0A21A;padding-top:6px}
+.rep .cover .kpis b{display:block;font-family:"Bricolage Grotesque",Arial,sans-serif;font-size:18px;color:#fff}
+.rep .cover .kpis span{font-size:10.5px;color:#C9D1DE}
+.rep h2{font-family:"Bricolage Grotesque","Segoe UI",Arial,sans-serif;font-size:16px;margin:0;padding:14px 0 5px;border-bottom:1.5px solid #E0A21A}
+.rep h2 .n{color:#B8860B;margin-right:8px;font-size:13px}
+.rep h3{font-size:12.5px;margin:0;padding:6px 0 2px}
+.rep table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+.rep th{background:#F1F4F8;text-align:left;font-weight:600;padding:6px 7px;border-bottom:1px solid #D5DBE5}
+.rep td{padding:6px 7px;border-bottom:1px solid #E6EAF0;vertical-align:top;overflow-wrap:anywhere}
+.rep .r{text-align:right;white-space:nowrap}
+.rep .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.rep .bar{display:flex;height:16px;border-radius:4px;overflow:hidden;margin:4px 0 2px}
+.rep .bar span{display:block;height:100%}
+.rep .muted{color:#5B6B82}
+.rep .box{background:#F6F8FB;border-left:3px solid #E0A21A;padding:8px 10px;margin:3px 0 0;white-space:pre-wrap}
+.rep .check{padding:6px 9px;border-radius:4px;background:#F6F8FB}
+.rep .check.warn{background:#FCEFF1;border-left:3px solid #B63A4E}
+.rep ul{margin:2px 0 0;padding-left:16px}
+.rep li{margin:2px 0}
+.rep .code{font-family:Consolas,"Courier New",monospace;font-size:9.5px;word-break:break-all}
+.rep .credit{padding-top:8px;border-top:1px solid #D5DBE5;font-size:10px;color:#5B6B82}`;
+function reportBlocks(){
+  const {inp,al,eco,ph,budget}=state;
+  const e=esc,today=new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
+  const media=al.rows.filter(r=>!["foundation","test"].includes(r.c));
+  const wk=weekly(inp,al.rows),tp=templates(inp),ut=utmLinks(inp,al.rows),ck=checks(inp,al,eco);
+  const B=[];let n=0;
+  const H2=t=>B.push({h:`<h2><span class="n">${String(++n).padStart(2,"0")}</span>${e(t)}</h2>`,k:1});
+  const H3=(t,sub)=>B.push({h:`<h3>${e(t)}${sub?` <span class="muted" style="font-weight:400">· ${sub}</span>`:""}</h3>`,k:1});
+  const P=h=>B.push({h});
+  const T=(cols,head,rows)=>B.push({t:{cg:`<colgroup>${cols.map(w=>`<col style="width:${w}">`).join("")}</colgroup>`,head,rows}});
+  P(`<div class="cover"><div class="eyebrow">Marketing plan · ${e(today)}</div><h1>${e(inp.name)}</h1>
+   <div class="meta">${e(inp.industry)} · ${e(MODELS[inp.model])} · ${e(STAGES[inp.stage])} · ${e(REACH[inp.reach])} · ${e(POS[inp.pos])}</div>
+   <div class="kpis"><div><b>${e(GOALS[inp.goal])}</b><span>Primary goal</span></div><div><b>${inr(budget)}</b><span>Total budget, ${inp.months} month${inp.months>1?"s":""}</span></div><div><b>${inr(al.monthly)}</b><span>Per month</span></div><div><b>${media.length}</b><span>Channels</span></div></div></div>`);
+  const info=[["Products or services",inp.products],["Target audience",inp.audience],["Geography",inp.geo],["Competitors",inp.comp]].filter(x=>x[1]);
+  if(info.length)T(["28%","72%"],"",info.map(x=>`<tr><td style="font-weight:600">${x[0]}</td><td>${e(x[1])}</td></tr>`));
+  H2("Budget allocation");
+  P(`<div class="bar">${al.rows.map(r=>`<span style="flex-grow:${r.share};background:${CH[r.c].c}"></span>`).join("")}</div>`);
+  T(["38%","26%","10%","13%","13%"],`<tr><th>Channel</th><th>Role</th><th class="r">Share</th><th class="r">Total</th><th class="r">Per month</th></tr>`,
+    [...al.rows.map(r=>`<tr><td><span class="sw" style="background:${CH[r.c].c}"></span>${e(CH[r.c].n)}</td><td class="muted">${e(CH[r.c].f)}</td><td class="r">${r.pct}%</td><td class="r">${inr(r.amt)}</td><td class="r">${inr(r.mo)}</td></tr>`),
+     `<tr><td style="font-weight:600">Total</td><td></td><td class="r" style="font-weight:600">100%</td><td class="r" style="font-weight:600">${inr(budget)}</td><td class="r" style="font-weight:600">${inr(al.monthly)}</td></tr>`]);
+  H2("Activities by channel");
+  al.rows.forEach(r=>{const ak=actsFor(r.c,inp);H3(CH[r.c].n,inr(r.amt));
+    T(["78%","22%"],"",[...ak.a.map(a=>`<tr><td>${e(a[0])}</td><td class="r">${inr(r.amt*a[1]/100)}</td></tr>`),`<tr><td colspan="2" class="muted" style="border-bottom:0">Judge on: ${e(ak.k.join(", "))}</td></tr>`]);
+});
+  if(eco){H2("Spending limits");
+    const L=[["Break-even ROAS",eco.beRoas.toFixed(2),"Revenue per ₹1 of ads needed to cover product cost"],["Contribution per order",inr(eco.contrib),"Order value × margin"],eco.clv?["Customer lifetime value",inr(eco.clv),"Contribution × lifetime purchases"]:null,eco.maxCac?["Max affordable CAC",inr(eco.maxCac),"CLV ÷ 3"]:null,eco.ordersNeeded?[inp.model==="b2b"?"Deals needed":"Orders needed",Math.ceil(eco.ordersNeeded).toLocaleString("en-IN"),"Revenue target ÷ order value"]:null,eco.reqRoas?["ROAS your target needs",eco.reqRoas.toFixed(2),"Revenue target ÷ budget"]:null].filter(Boolean);
+    T(["34%","18%","48%"],"",L.map(x=>`<tr><td style="font-weight:600">${x[0]}</td><td class="r">${x[1]}</td><td class="muted">${x[2]}</td></tr>`))}
+  H2("Roadmap");
+  ph.forEach(p=>{H3(p.t,`${e(p.when)} · about ${inr(p.amt)}`);P(`<ul>${p.items.map(t=>`<li>${e(t)}</li>`).join("")}</ul>`)});
+  B.push({pb:1});
+  H2("How to execute");
+  H3("Tools for each channel");
+  T(["32%","68%"],`<tr><th>Channel</th><th>Tools</th></tr>`,al.rows.map(r=>`<tr><td>${e(CH[r.c].n)}</td><td>${(TOOLS[r.c]||[]).map(t=>`${e(t[0])} <span class="muted">(${e(t[1])})</span>`).join(", ")}</td></tr>`));
+  H3("Week by week"+(inp.months>1?" (month 1)":""));
+  T(["13%","50%","37%"],`<tr><th>Week</th><th>What to do</th><th>Spend</th></tr>`,wk.map(w=>`<tr><td><b>Week ${w.w}</b><br><span class="muted">${inr(w.total)}</span></td><td>${e(w.tasks)}</td><td class="muted">${w.sp.map(x=>e(CH[x.c].n)+" "+inr(x.amt)).join(", ")}</td></tr>`));
+  H3("Templates");
+  tp.forEach(t=>P(`<b>${e(t[0])}</b><div class="box">${e(t[1])}</div>`));
+  if(ut.length){H3("Tracking links");T(["27%","73%"],"",ut.map(u=>`<tr><td>${e(u[0])}</td><td class="code">${e(u[1])}</td></tr>`))}
+  H2("Checks");
+  ck.forEach(c=>P(`<div class="check ${c[0]}">${e(c[1])}</div>`));
+  H2("Frameworks applied");
+  const g={};state.kb.slice(0,24).forEach(k=>{(g[k.s]=g[k.s]||[]).push(k)});
+  Object.entries(g).forEach(([s,a])=>{H3(s);a.forEach(k=>P(`<b>${e(k.c)}.</b> <span class="muted">${e(k.a)}</span>`))});
+  P(`<div class="credit">Prepared with the Marketing Plan Builder by Anurag Sahu (MBA Marketing, BML Munjal University). The budget split follows fixed planning rules for the goal, business model, stage, reach, positioning and budget entered; spending limits use only the figures provided. Treat this plan as a starting point and let early results guide changes.</div>`);
+  return B;
+}
+const blkHTML=b=>b.t?`<div class="blk"><table>${b.t.cg}${b.t.head}${b.t.rows.join("")}</table></div>`:`<div class="blk">${b.h}</div>`;
+function reportHTML(){return `<style>${REPCSS}</style><div class="rep">${reportBlocks().filter(b=>!b.pb).map(blkHTML).join("")}</div>`}
+function loadScript(src,test){return new Promise((res,rej)=>{if(test())return res();const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=rej;document.head.appendChild(sc)})}
+function paginate(blocks,pageH){
+  const host=document.createElement("div");host.style.cssText="position:absolute;left:-10000px;top:0;";
+  host.innerHTML=`<style>${REPCSS}</style><div class="rep" id="repm"></div>`;document.body.appendChild(host);
+  const m=host.querySelector("#repm");
+  const measure=h=>{m.innerHTML=h;return m.firstElementChild.getBoundingClientRect().height};
+  const items=[];
+  blocks.forEach(b=>{
+    if(b.pb){items.push({pb:1});return}
+    if(!b.t){items.push({h:blkHTML(b),ht:measure(blkHTML(b)),k:b.k});return}
+    const headH=b.t.head?measure(`<div class="blk"><table>${b.t.cg}${b.t.head}</table></div>`):measure(`<div class="blk"><table>${b.t.cg}</table></div>`);
+    const rowsH=b.t.rows.map(r=>measure(`<div class="blk"><table>${b.t.cg}${b.t.head}${r}</table></div>`)-headH);
+    items.push({t:b.t,headH,rowsH,k:b.k});
+  });
+  host.remove();
+  const pages=[];let cur=[],used=0;
+  const newPage=()=>{if(cur.length)pages.push(cur);cur=[];used=0};
+  for(let i=0;i<items.length;i++){
+    const it=items[i];
+    if(it.pb){newPage();continue}
+    if(!it.t){
+      let need=it.ht;
+      if(it.k){let j=i+1;while(j<items.length&&items[j].k&&!items[j].t){need+=items[j].ht;j++}
+        const nx=items[j];if(nx){if(nx.t){const tt=nx.headH+nx.rowsH.reduce((x,y)=>x+y,0);need+=tt<=pageH*0.3?tt:nx.headH+(nx.rowsH[0]||0)}else need+=nx.ht}}
+      if(used+Math.min(need,pageH)>pageH&&used>0)newPage();
+      cur.push(it.h);used+=it.ht;continue}
+    let rows=[],rh=0;const t=it.t;const total=it.headH+it.rowsH.reduce((x,y)=>x+y,0);
+    if(total<=pageH*0.3&&used+total>pageH&&used>0)newPage();
+    for(let r=0;r<t.rows.length;r++){
+      if(used+it.headH+rh+it.rowsH[r]>pageH&&(rows.length||used>0)){
+        if(rows.length){cur.push(`<div class="blk"><table>${t.cg}${t.head}${rows.join("")}</table></div>`)}
+        newPage();rows=[];rh=0}
+      rows.push(t.rows[r]);rh+=it.rowsH[r]}
+    if(rows.length){cur.push(`<div class="blk"><table>${t.cg}${t.head}${rows.join("")}</table></div>`);used+=it.headH+rh}
+  }
+  newPage();return pages;
+}
+function printPDF(){
+  const f=document.createElement("iframe");f.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:0";document.body.appendChild(f);
+  const d=f.contentDocument;const fl=document.querySelector('link[href*="fonts.googleapis"]');
+  d.open();d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(state.inp.name)} marketing plan</title>${fl?fl.outerHTML:""}<style>@page{size:A4;margin:12mm}body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.rep{width:auto!important}.blk{break-inside:avoid}h2,h3{break-after:avoid}tr{break-inside:avoid}</style></head><body>${reportHTML()}</body></html>`);d.close();
+  setTimeout(()=>{f.contentWindow.focus();f.contentWindow.print();setTimeout(()=>f.remove(),60000)},700);
+}
+async function downloadPDF(){
+  const o=$("#cpo"),btn=$("#pdf");btn.disabled=true;o.textContent="Preparing PDF…";
+  const name=slug(state.inp.name)+"-marketing-plan.pdf";
+  const foot=(String(state.inp.name||"").replace(/[^\x20-\x7E]/g,"").trim()||"Marketing plan")+" | Marketing plan";
+  let host;
+  try{
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",()=>window.html2canvas);
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",()=>window.jspdf&&window.jspdf.jsPDF);
+    try{await document.fonts.ready}catch(e){}
+    const MW=10,MT=10,CW=190,CH_MM=268,PX=718/CW;
+    const pages=paginate(reportBlocks(),CH_MM*PX);
+    const pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4",orientation:"portrait"});
+    host=document.createElement("div");host.style.cssText="position:absolute;left:-10000px;top:0;";document.body.appendChild(host);
+    for(let p=0;p<pages.length;p++){
+      o.textContent=`Preparing PDF… page ${p+1} of ${pages.length}`;
+      host.innerHTML=`<style>${REPCSS}</style><div class="rep">${pages[p].join("")}</div>`;
+      const el=host.querySelector(".rep");
+      const cv=await window.html2canvas(el,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false});
+      if(p>0)pdf.addPage();
+      const hmm=cv.height/cv.width*CW;
+      pdf.addImage(cv.toDataURL("image/jpeg",0.95),"JPEG",MW,MT,CW,hmm);
+    }
+    const n=pdf.internal.getNumberOfPages();
+    for(let i=1;i<=n;i++){pdf.setPage(i);pdf.setFontSize(8);pdf.setTextColor(110,120,135);pdf.text(foot,MW,289);pdf.text("Page "+i+" of "+n,200,289,{align:"right"})}
+    pdf.save(name);o.textContent="PDF downloaded";
+  }catch(e){
+    console.error(e);o.textContent="Opening print view: choose 'Save as PDF'.";printPDF();
+  }finally{btn.disabled=false;if(host)host.remove()}
+}
+
 let state={site:"",inp:null,budget:0,al:null,eco:null,ph:null,ai:null,kb:null};
 let sampleFn=null,downloadsFn=null,aiCtl=null;
 
@@ -762,10 +914,11 @@ function render(){
   <section class="panel" id="exec-sec"></section>
   <section class="panel"><h2>Checks on your inputs</h2><div class="checks" id="chk"></div></section>
   <section class="panel"><h2>Frameworks behind this plan</h2><div class="kb" id="kb"></div></section>
-  <section class="panel"><div class="bar-actions"><button type="button" id="dl">Download plan (.md)</button><button type="button" id="cp">Copy plan as text</button><span class="small muted" id="cpo" role="status"></span></div></section>`;
+  <section class="panel"><div class="bar-actions"><button type="button" id="pdf" style="background:var(--accent);border-color:var(--accent);color:#231800">Download PDF</button><button type="button" id="dl">Download plan (.md)</button><button type="button" id="cp">Copy plan as text</button><span class="small muted" id="cpo" role="status"></span></div></section>`;
   paintAlloc();paintRest();renderAIShell();
   $("#wi").addEventListener("input",e=>{const p=+e.target.value;$("#wio").textContent=p+"%";state.budget=Math.round(state.inp.budget*p/100/100)*100;compute();paintAlloc();paintRest();if(state.ai)paintAI()});
   $("#dl").addEventListener("click",download);
+  $("#pdf").addEventListener("click",downloadPDF);
   $("#cp").addEventListener("click",()=>{const t=toMarkdown();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>$("#cpo").textContent="Copied").catch(()=>$("#cpo").textContent="Copy isn't available here; use download instead.")});
 }
 
