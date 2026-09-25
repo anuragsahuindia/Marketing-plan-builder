@@ -134,6 +134,18 @@ button:hover{border-color:var(--muted)}
 .cf.Low{background:var(--warn-soft);color:var(--neg)}
 .cf.High{background:var(--accent-soft);color:var(--accent-ink)}
 .nots li{margin:4px 0}
+.badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;white-space:nowrap}
+.b-scale{background:#DDF3E9;color:#17694C}.b-opt{background:#FBF1D9;color:#7A5300}.b-stop{background:#FCE3E7;color:#9E2F42}.b-wait{background:var(--soft);color:var(--muted)}
+:root[data-theme="dark"] .b-scale{background:#15392C;color:#6FD3A8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .b-scale{background:#15392C;color:#6FD3A8}:root:not([data-theme="light"]) .b-opt{background:#3A3016;color:#F0C75A}:root:not([data-theme="light"]) .b-stop{background:#3D1C25;color:#F08C9E}}
+.trk input{padding:6px 8px;font-size:13.5px;min-width:80px}
+.trk td{vertical-align:middle}
+.dec{margin-top:14px}
+.dec .row{display:grid;grid-template-columns:minmax(0,200px) auto minmax(0,1fr);gap:10px;align-items:start;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+@media (max-width:620px){.dec .row{grid-template-columns:minmax(0,1fr)}}
+.move{background:var(--accent-soft);border-radius:10px;padding:10px 14px;margin-top:12px;font-size:14px}
+.cmp input{padding:6px 8px;font-size:13px}
+.ws{border-left:3px solid var(--accent);padding:6px 0 6px 12px;margin-top:12px;font-family:var(--display);font-size:16px}
 .sub{margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
 .sub:first-of-type{margin-top:0;padding-top:0;border-top:0}
 .tag{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:999px;margin-left:6px;background:var(--soft);color:var(--muted);white-space:nowrap}
@@ -961,6 +973,13 @@ function reportBlocks(){
   H3("Templates");
   tp.forEach(t=>P(`<b>${e(t[0])}</b><div class="box">${e(t[1])}</div>`));
   if(ut.length){H3("Tracking links");T(["27%","73%"],"",ut.map(u=>`<tr><td>${e(u[0])}</td><td class="code">${e(u[1])}</td></tr>`))}
+  H2("Content pillars");
+  T(["17%","37%","14%","14%","18%"],`<tr><th>Pillar</th><th>Idea and hook</th><th>Format</th><th>Call to action</th><th>Judge on</th></tr>`,pillars(inp).map(p=>`<tr><td><b>${e(p[0])}</b><span class="why">${e(p[1])}</span></td><td>${e(p[2])}<span class="why" style="color:#14213D">${e(p[3])}</span></td><td>${e(p[4])}</td><td>${e(p[5])}</td><td class="muted">${e(p[6])}</td></tr>`));
+  H2("Creative tests");B.push({k:1,h:`<div class="muted">One variable at a time, equal budget per version, at least 7 days. A gap under 10% is a tie.</div>`});
+  T(["20%","30%","30%","20%"],`<tr><th>Test</th><th>Version A</th><th>Version B</th><th>Decide on</th></tr>`,tests(inp,al).map(t=>`<tr><td><b>${e(t[0])}</b></td><td>${e(t[1])}</td><td>${e(t[2])}</td><td class="muted">${e(t[3])}</td></tr>`));
+  const cmpR=Object.keys(state.cmp||{}).filter(n=>Object.values(state.cmp[n]||{}).some(Boolean));
+  if(cmpR.length){H2("Competitors");T(["16%","24%","12%","16%","16%","16%"],`<tr><th>Competitor</th><th>Main message</th><th>Price</th><th>Channels</th><th>Strength</th><th>Weakness</th></tr>`,cmpR.map(n=>{const c=state.cmp[n];return`<tr><td><b>${e(n)}</b></td><td>${e(c.msg||"")}</td><td>${e(c.price||"")}</td><td>${e(c.channels||"")}</td><td>${e(c.strength||"")}</td><td>${e(c.weakness||"")}</td></tr>`}));const w=whiteSpace(inp);if(w)P(`<div class="box">${e(w)}</div>`)}
+  const Dr=decide();if(Dr.rows.some(x=>x.sp)){H2(`Results and decisions (${Dr.wk} week${Dr.wk==1?"":"s"})`);T(["28%","14%","58%"],`<tr><th>Channel</th><th>Decision</th><th>Why</th></tr>`,Dr.rows.map(x=>`<tr><td>${e(CH[x.r.c].n)}</td><td><b>${DLAB[x.d][1]}</b></td><td>${e(x.why)}</td></tr>`));if(Dr.move)P(`<div class="box"><b>Next week:</b> ${e(Dr.move)}</div>`)}
   H2("What not to do");
   P(`<ul>${whatNot(inp,al,eco).map(t=>`<li>${e(t)}</li>`).join("")}</ul>`);
   H2("Checks");
@@ -1047,7 +1066,108 @@ async function downloadPDF(){
   }finally{btn.disabled=false;if(host)host.remove()}
 }
 
-let state={site:"",inp:null,budget:0,al:null,eco:null,ph:null,ai:null,kb:null};
+const CTA={purchase:["Shop now","See the range"],enquiry:["Enquire now","See our work"],subscription:["Start free trial","See how it works"],repeat:["Order again","Set up a repeat order"],fans:["Follow for more","Listen to the full track"]};
+function ctaFor(inp){const c=CTA[inp.journey];if(inp.pos==="luxury"&&inp.journey==="enquiry")return["Request a commission","Join the waitlist"];return c}
+function pillars(inp){
+  const nm=inp.name,lux=inp.pos==="luxury",cta=ctaFor(inp)[0];
+  const cl=t=>String(t||"").trim().replace(/[\s.!?;,:]+$/,"");
+  const ben=cl(inp.benefit)||"[main benefit]";let prod=cl(inp.products).split(/[,—–;]/)[0].trim().toLowerCase();if(prod.split(/\s+/).length<2)prod=lux?"piece":"product";
+  if(inp.journey==="fans")return[
+    ["Music and performance","Awareness","Short clips of your strongest 15 seconds","Start on the hook of the track, not the intro","Reel or Short","Follow for more","Saves and shares"],
+    ["Behind the music","Awareness to engagement","How a track came together","\"This started as a voice note at 2 a.m.\" [your version]","Reel or Short","Listen to the full track","Profile visits"],
+    ["Story","Engagement","Who you are and why you make this music","\"Why I make [genre] music\"","Talking to camera","Follow","Follows"],
+    ["Fan interaction","Engagement to loyalty","Duets, requests, replies to comments","\"You asked for [song request]. Here it is.\"","Reel, Stories","Comment your request","Comments and duets"],
+    ["Releases and support","Conversion","New release, gig or merch","\"[Release] is out. Here's the part I'm proudest of.\"","Reel, Stories, post","Listen, buy or book","Streams, tickets, merch"]];
+  return[
+    [lux?"The craft":"How it's made","Awareness",`What goes into every ${prod}`,lux?"\"This didn't exist until someone asked for it.\"":`"Here's what goes into every ${prod}."`,"Reel or Short","Follow",lux?"Saves and shares":"Reach and saves"],
+    ["Proof","Consideration","Finished work, results or before-and-after",`"${nm}: ${ben}."`,"Carousel or short clip",cta,"Profile or site visits"],
+    ["Story","Awareness to consideration","Founder and brand story",`"Why I started ${nm}: [one sentence]."`,"Talking to camera","Follow","Follows and shares"],
+    [lux?"The ritual":"Education","Consideration",lux?"How the process works, step by step":`What to know before choosing a ${prod}`,lux?"\"How a commission works, in three steps.\"":`"Three things to know before you buy a ${prod}."`,"Carousel",lux?cta:"Save this","Saves"],
+    ["Customer voice","Conversion",lux?"A client's reaction to their finished work":"Reviews and customer content",lux?"\"The first time they heard it.\" [client reaction clip, with permission]":"\"[Customer quote]\" — [customer name]","Testimonial clip or carousel",cta,inp.journey==="enquiry"?"Enquiries":"Orders or sign-ups"]];
+}
+function tests(inp,al){
+  const lux=inp.pos==="luxury",c=ctaFor(inp),has=x=>al.rows.some(r=>r.c===x);
+  const cl=t=>String(t||"").trim().replace(/[\s.!?;,:]+$/,"");
+  const T=[
+    ["Hook (first 3 seconds)",lux?"\"Made for you.\"":`Benefit first: "${cl(inp.benefit)||"[main benefit]"}"`,lux?"\"Made for nobody else.\"":"Curiosity first: \"[surprising fact about your product]\"","3-second view rate"],
+    ["Format","Founder talking to camera","Finished work or product only","Profile or site visits per 1,000 reached"],
+    ["Call to action",c[0],c[1],inp.journey==="enquiry"?"Enquiry rate":"Click-through rate"]];
+  if(has("meta")||has("search")||has("video"))T.push(["Audience","Broad targeting","Interest-based targeting","Cost per "+(FAM(inp.goal)==="aware"?"profile visit":"result")]);
+  if(!lux&&["sl","ac"].includes(inp.goal))T.push(["Offer framing","Value message (quality, outcome)","Risk-reversal message (guarantee, easy returns)","Conversion rate"]);
+  return T;
+}
+function metricFor(inp){const J=JOURNEYS[inp.journey],f=FAM(inp.goal);
+  if(f==="aware")return inp.journey==="fans"?"New followers":"Profile or page visits";
+  if(f==="lead")return "Enquiries or leads";if(f==="retain")return "Repeat orders";if(f==="expand")return "New customers";return J.stages[J.rev]}
+function liveKey(){return "mpb-live-"+slug(state.inp.name)}
+function loadLive(){try{const d=JSON.parse(localStorage.getItem(liveKey())||"null");state.res=d&&d.res||{weeks:"",ch:{}};state.cmp=d&&d.cmp||{}}catch(e){state.res={weeks:"",ch:{}};state.cmp={}}}
+function saveLive(){try{localStorage.setItem(liveKey(),JSON.stringify({res:state.res,cmp:state.cmp}))}catch(e){}}
+function decide(){
+  const {inp,al,eco}=state;const R=state.res||{ch:{}};const wk=+R.weeks||0;
+  const media=al.rows.filter(r=>!["foundation","test"].includes(r.c));
+  const rows=media.map(r=>{const d=R.ch[r.c]||{};const sp=+d.spend||0,rs=+d.res||0,rv=+d.rev||0;
+    const planned=r.amt/(inp.months*4.33)*wk;return{r,sp,rs,rv,planned,cpr:rs>0?sp/rs:null}});
+  const judged=rows.filter(x=>x.sp>0&&wk>=1&&x.sp>=0.5*x.planned&&x.rs>0);
+  const J=JOURNEYS[inp.journey];const useCac=eco&&eco.maxCac&&metricFor(inp)===J.stages[J.rev];
+  const bench=useCac?eco.maxCac:(judged.length>=2?judged.reduce((s,x)=>s+x.sp,0)/judged.reduce((s,x)=>s+x.rs,0):null);
+  const benchLabel=useCac?"your limit of "+inr(eco.maxCac)+" per customer":(bench?"the plan average of "+inr(bench)+" per result":null);
+  rows.forEach(x=>{
+    if(!x.sp){x.d="wait";x.why="No results entered yet.";return}
+    if(wk<1||x.sp<0.5*x.planned){x.d="wait";x.why=`Keep running: ${inr(x.sp)} spent so far is too little to judge (plan: about ${inr(x.planned)} by now).`;return}
+    if(["seo","pr"].includes(x.r.c)&&wk<8){x.d="wait";x.why=`Keep running: ${CH[x.r.c].n.split(" ")[0]} usually takes two to three months to show results. Judge it on rankings, coverage or mentions until then.`;return}
+    if(x.rs===0){x.d=wk>=2?"stop":"opt";x.why=wk>=2?`No results after ${wk} weeks and ${inr(x.sp)}.`:`No results yet after ${inr(x.sp)}; change the creative or audience before judging.`;return}
+    const roas=x.rv>0?x.rv/x.sp:null;
+    if(!bench){x.d="opt";x.why=`${inr(x.cpr)} per result. Enter results for at least two channels, or your maximum cost per customer, to compare.`;return}
+    const ratio=x.cpr/bench;
+    if(ratio<=0.8){x.d="scale";x.why=`${inr(x.cpr)} per result, at least 20% better than ${benchLabel}.`}
+    else if(ratio<=1.25){x.d="opt";x.why=`${inr(x.cpr)} per result, close to ${benchLabel}. Test new creative or audiences to improve it.`}
+    else{x.d=wk>=2?"stop":"opt";x.why=`${inr(x.cpr)} per result, more than 25% worse than ${benchLabel}.`+(wk<2?" Give it one more week with a new creative.":"")}
+    if(roas!==null&&eco&&eco.beRoas&&roas<eco.beRoas){x.why+=` ROAS ${roas.toFixed(2)} is below break-even (${eco.beRoas.toFixed(2)}).`;if(x.d==="scale")x.d="opt";else if(x.d==="opt"&&wk>=2)x.d="stop"}
+  });
+  const stop=rows.filter(x=>x.d==="stop"),scale=rows.filter(x=>x.d==="scale");
+  let move=null;const lst=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
+  if(stop.length&&scale.length){const amt=stop.reduce((s,x)=>s+x.r.mo,0);move=`Pause ${lst(stop.map(x=>CH[x.r.c].n))} and move about ${inr(amt)} a month to ${lst(scale.map(x=>CH[x.r.c].n))}. Raise in 20–30% steps and watch the cost per result.`}
+  else if(scale.length){move=`Raise ${lst(scale.map(x=>CH[x.r.c].n))} by 20–30% (about ${inr(scale.reduce((s,x)=>s+x.r.mo*0.25,0))} a month), funded from the test reserve or the weakest channel.`}
+  else if(stop.length){move=`Pause ${lst(stop.map(x=>CH[x.r.c].n))} and hold the budget until another channel earns a Scale result.`}
+  return{rows,wk,benchLabel,metric:metricFor(inp),move};
+}
+const DLAB={scale:["b-scale","Scale"],opt:["b-opt","Optimise"],stop:["b-stop","Stop"],wait:["b-wait","Keep running"]};
+function whiteSpace(inp){
+  const names=Object.keys(state.cmp||{}).filter(n=>state.cmp[n]&&state.cmp[n].msg);
+  if(!names.length)return null;
+  const msgs=names.map(n=>state.cmp[n].msg.trim().replace(/[.!]+$/,"").toLowerCase());
+  const pod=String(inp.pod||"").trim().replace(/[.!]+$/,"");
+  return pod?`Competitors lead with ${msgs.join("; ")}. ${inp.name} can stand apart on: ${pod}.`:`Competitors lead with ${msgs.join("; ")}. Add what makes you different in step 1 to state your own space.`;
+}
+function paintPhase2(){
+  const {inp,al}=state;
+  if(state._liveFor!==liveKey()){loadLive();state._liveFor=liveKey()}
+  const pl=pillars(inp),ts=tests(inp,al);
+  $("#pil-sec").innerHTML=`<h2>Content pillars</h2><p class="small muted" style="margin-top:0">Recurring themes to post around. Hooks are starting points; replace anything in [brackets].</p><div class="tablewrap"><table class="alloc"><thead><tr><th>Pillar</th><th>Idea and hook</th><th>Format</th><th>Call to action</th><th>Judge on</th></tr></thead><tbody>${pl.map(p=>`<tr><td><b>${esc(p[0])}</b><div class="small muted">${esc(p[1])}</div></td><td>${esc(p[2])}<div class="small" style="margin-top:4px">${esc(p[3])}</div></td><td class="small">${esc(p[4])}</td><td class="small">${esc(p[5])}</td><td class="small muted">${esc(p[6])}</td></tr>`).join("")}</tbody></table></div>`;
+  $("#tst-sec").innerHTML=`<h2>Creative tests</h2><p class="small muted" style="margin-top:0">Test one variable at a time with the same budget on each version. Winner: the better KPI after at least 7 days. If the gap is under 10%, call it a tie and test something else.</p><div class="tablewrap"><table class="alloc"><thead><tr><th>Test</th><th>Version A</th><th>Version B</th><th>Decide on</th></tr></thead><tbody>${ts.map(t=>`<tr><td><b>${esc(t[0])}</b></td><td>${esc(t[1])}</td><td>${esc(t[2])}</td><td class="small muted">${esc(t[3])}</td></tr>`).join("")}</tbody></table></div>`;
+  const cn=String(inp.comp||"").split(/,|;|\band\b/).map(x=>x.trim()).filter(Boolean).slice(0,4);
+  const cs=$("#cmp-sec");
+  if(!cn.length){cs.innerHTML=`<h2>Competitors</h2><p class="muted" style="margin:0">Add competitor names in step 1 to build a comparison and find your space.</p>`}
+  else{
+    const F=[["msg","Main message"],["price","Price level"],["channels","Main channels"],["strength","Strength"],["weakness","Weakness"]];
+    cs.innerHTML=`<h2>Competitors</h2><p class="small muted" style="margin-top:0">Fill in what you know from their websites and social pages. Nothing here is guessed.</p><div class="tablewrap"><table class="alloc cmp"><thead><tr><th>Competitor</th>${F.map(f=>`<th>${f[1]}</th>`).join("")}</tr></thead><tbody>${cn.map((n,i)=>`<tr><td><b>${esc(n)}</b></td>${F.map(f=>`<td><input data-cn="${esc(n)}" data-f="${f[0]}" aria-label="${esc(n)} ${f[1]}" value="${esc((state.cmp[n]||{})[f[0]]||"")}"></td>`).join("")}</tr>`).join("")}</tbody></table></div><div id="ws"></div>`;
+    const paintWS=()=>{const w=whiteSpace(inp);$("#ws").innerHTML=w?`<div class="ws">${esc(w)}</div>`:`<p class="small muted">Fill in each competitor's main message to see where ${esc(inp.name)} can stand apart.</p>`};
+    cs.querySelectorAll("input").forEach(el=>el.addEventListener("input",()=>{const n=el.dataset.cn;state.cmp[n]=state.cmp[n]||{};state.cmp[n][el.dataset.f]=el.value;saveLive();paintWS()}));
+    paintWS();
+  }
+  const media=al.rows.filter(r=>!["foundation","test"].includes(r.c));const R=state.res;
+  const m=metricFor(inp);const showRev=["sales","lead","retain","expand"].includes(FAM(inp.goal));
+  $("#trk-sec").innerHTML=`<h2>Track results and decide</h2><p class="small muted" style="margin-top:0">Enter results so far each week. The builder marks each channel Scale, Optimise, Stop or Keep running, and says where to move budget. Saved in this browser.</p>
+   <label for="wks" style="margin-top:4px">Weeks of data so far</label><input id="wks" type="number" min="0" max="52" step="1" style="max-width:120px" value="${esc(R.weeks||"")}">
+   <div class="tablewrap" style="margin-top:10px"><table class="alloc trk"><thead><tr><th>Channel</th><th>Spend so far (₹)</th><th>${esc(m)}</th>${showRev?"<th>Revenue (₹)</th>":""}</tr></thead><tbody>${media.map(r=>{const d=R.ch[r.c]||{};return`<tr><td>${esc(CH[r.c].n)}</td><td><input type="number" min="0" data-c="${r.c}" data-f="spend" aria-label="${esc(CH[r.c].n)} spend" value="${esc(d.spend||"")}"></td><td><input type="number" min="0" data-c="${r.c}" data-f="res" aria-label="${esc(CH[r.c].n)} ${esc(m)}" value="${esc(d.res||"")}"></td>${showRev?`<td><input type="number" min="0" data-c="${r.c}" data-f="rev" aria-label="${esc(CH[r.c].n)} revenue" value="${esc(d.rev||"")}"></td>`:""}</tr>`}).join("")}</tbody></table></div>
+   <div class="dec" id="dec" aria-live="polite"></div>`;
+  const paintDec=()=>{const D=decide();$("#dec").innerHTML=D.rows.map(x=>`<div class="row"><b>${esc(CH[x.r.c].n)}</b><span class="badge ${DLAB[x.d][0]}">${DLAB[x.d][1]}</span><span>${esc(x.why)}</span></div>`).join("")+(D.move?`<div class="move"><b>Next week:</b> ${esc(D.move)}</div>`:"")};
+  $("#wks").addEventListener("input",e=>{R.weeks=e.target.value;saveLive();paintDec()});
+  $("#trk-sec").querySelectorAll("input[data-c]").forEach(el=>el.addEventListener("input",()=>{const c=el.dataset.c;R.ch[c]=R.ch[c]||{};R.ch[c][el.dataset.f]=el.value;saveLive();paintDec()}));
+  paintDec();
+}
+
+let state={site:"",res:{weeks:"",ch:{}},cmp:{},inp:null,budget:0,al:null,eco:null,ph:null,ai:null,kb:null};
 let sampleFn=null,downloadsFn=null,aiCtl=null;
 
 
@@ -1084,6 +1204,10 @@ function render(){
   <section class="panel" id="eco-sec"></section>
   <section class="panel"><h2>Roadmap</h2><div id="ph"></div></section>
   <section class="panel" id="exec-sec"></section>
+  <section class="panel" id="pil-sec"></section>
+  <section class="panel" id="tst-sec"></section>
+  <section class="panel" id="cmp-sec"></section>
+  <section class="panel" id="trk-sec"></section>
   <section class="panel"><h2>What not to do</h2><ul class="nots" id="nots"></ul></section>
   <section class="panel"><h2>Checks on your inputs</h2><div class="checks" id="chk"></div></section>
   <section class="panel" id="reg-sec"></section>
@@ -1142,7 +1266,7 @@ function paintRest(){
   $("#chk").innerHTML=checks(inp,al,eco).map(c=>`<div class="${c[0]}">${esc(c[1])}</div>`).join("");
   const reg=assumptionRegister(inp,al,eco,fn);
   $("#reg-sec").innerHTML=`<h2>Assumption register</h2><p class="small muted" style="margin-top:0">Where every number comes from, so nothing assumed is presented as fact.</p><div class="tablewrap"><table class="alloc reg"><thead><tr><th>Variable</th><th>Value</th><th>Source</th><th>Confidence</th></tr></thead><tbody>${reg.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="small muted">${esc(r[2])}</td><td><span class="cf ${esc(r[3])}">${esc(r[3])}</span></td></tr>`).join("")}</tbody></table></div>`;
-  paintExec();
+  paintExec();paintPhase2();
   $("#kb").innerHTML=state.kb.slice(0,14).map(k=>`<p><strong>${esc(k.a)}</strong> <span class="muted">(${esc(k.c)}, ${esc(k.s)})</span></p>`).join("");
 }
 
@@ -1257,6 +1381,11 @@ function toMarkdown(){
   weekly(inp,al.rows).forEach(w=>L.push(`- Week ${w.w} (${inr(w.total)}): ${w.tasks} Spend: ${w.sp.map(x=>CH[x.c].n+" "+inr(x.amt)).join(", ")}`));
   L.push(``,`### Templates`);templates(inp).forEach(t=>L.push(``,`**${t[0]}**`,``,t[1]));
   const ul2=utmLinks(inp,al.rows);if(ul2.length){L.push(``,`### Tracking links`);ul2.forEach(u=>L.push(`- ${u[0]}: ${u[1]}`))}
+  L.push(``,`## Content pillars`,``,`| Pillar | Stage | Idea | Hook | Format | CTA | Judge on |`,`|---|---|---|---|---|---|---|`);pillars(inp).forEach(p=>L.push(`| ${p.join(" | ")} |`));
+  L.push(``,`## Creative tests`,``,`Test one variable at a time, equal budget per version, at least 7 days; under a 10% gap is a tie.`,``,`| Test | Version A | Version B | Decide on |`,`|---|---|---|---|`);tests(inp,al).forEach(t=>L.push(`| ${t.join(" | ")} |`));
+  const cmpN=Object.keys(state.cmp||{}).filter(n=>Object.values(state.cmp[n]||{}).some(Boolean));
+  if(cmpN.length){L.push(``,`## Competitors`,``,`| Competitor | Main message | Price level | Main channels | Strength | Weakness |`,`|---|---|---|---|---|---|`);cmpN.forEach(n=>{const c=state.cmp[n];L.push(`| ${n} | ${c.msg||""} | ${c.price||""} | ${c.channels||""} | ${c.strength||""} | ${c.weakness||""} |`)});const w=whiteSpace(inp);if(w)L.push(``,`**Where to stand apart:** ${w}`)}
+  const Dm=decide();if(Dm.rows.some(x=>x.d!=="wait"||x.sp)){L.push(``,`## Results and decisions (${Dm.wk} week${Dm.wk==1?"":"s"} of data)`);Dm.rows.forEach(x=>L.push(`- ${CH[x.r.c].n}: **${DLAB[x.d][1]}**. ${x.why}`));if(Dm.move)L.push(``,`**Next week:** ${Dm.move}`)}
   L.push(``,`## What not to do`);whatNot(inp,al,eco).forEach(t=>L.push(`- ${t}`));
   L.push(``,`## Checks`);checks(inp,al,eco).forEach(c=>L.push(`- ${c[1]}`));
   if(ai){const s=ai.situation||{},w=ai.swot||{},st=ai.stp||{},m=ai.messaging||{};
