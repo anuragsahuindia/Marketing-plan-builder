@@ -381,6 +381,7 @@ function actsFor(c,inp){
   if(c==="crm"&&nw){a=[["Waitlist and launch emails",40],["Enquiry follow-up flow",35],["Referral offer for first customers",25]];k=["Waitlist sign-ups","Enquiry response time","Enquiry to sale rate"]}
   if(c==="influencer"&&lux){a=[["Gifted work to a few selected creators",60],["Rights to reuse creator content",25],["Seeding with niche tastemakers",15]];k=["Reach in target audience","Saves and shares","Profile visits","Enquiries"]}
   if(c==="organic"&&lux){a=[["Behind-the-craft video content",55],["Portfolio posts and showcases",30],["Community replies and DMs",15]];k=["Reach","Saves and shares","Profile visits","Enquiries"]}
+  if(c==="test"&&lux)a=[["New channel or audience tests",60],["Creative and message tests",40]];
   if(c==="foundation"&&nw){a=[["Portfolio or landing page",45],["Samples and launch creative",40],["Analytics and enquiry tracking",15]];k=["Visitors","Enquiry rate","Tracking coverage"]}
   const g=KPI[FAM(inp.goal)];
   if(g&&g[c]&&!(c==="local"&&FAM(inp.goal)!=="aware"))k=g[c];
@@ -525,14 +526,16 @@ function phases(inp,budget,rows){
   const fam=FAM(inp.goal),st=STEPS[fam];
   if(M<3){
     const items=st?st.short:["Set up tracking, landing pages and creative before spend goes live.","Run "+top.join(" and ")+" with two or three creative and audience variants each.","Review weekly; move money toward the variant closest to your "+GOALS[inp.goal].toLowerCase()+" target.","A short period leaves little learning time, so treat results as directional."];
-    return[{t:"Launch, learn and adjust",when:M===1?"Month 1":"Months 1–"+M,amt:budget,items:[...items,"Main channels: "+top.join(" and ")+"."]}];
+    const lux=inp.pos==="luxury"?["Announce a limited number of commissions or units and open a waitlist; never discount to create demand."]:[];
+    return[{t:"Launch, learn and adjust",when:M===1?"Month 1":"Months 1–"+M,amt:budget,items:[...items,...lux,"Main channels: "+top.join(" and ")+"."]}];
   }
   const p1=Math.max(1,Math.round(M*.25)),p3=Math.max(1,Math.round(M*.35)),p2=Math.max(1,M-p1-p3);
   const r=(a,b)=>a===b?"Month "+a:"Months "+a+"–"+b;
   const def={p1:["Fix tracking: every channel reports to one set of conversion events.","Build landing pages and creative; write the positioning statement first.","Test "+top.join(" and ")+" with small budgets across audiences and messages.","Spend most of the test reserve here."],
    p2:["Cut ad sets and creatives below break-even; keep the top third.","Launch retargeting and nurture flows for people who engaged but didn't act.","Fix the stage with the biggest funnel drop before adding traffic."],
    p3:["Raise budget on winning channels in 20–30% steps and watch for rising CPA (diminishing returns).","Expand winning creative into new formats and audiences.","Shift retained budget into retention and referral to lift lifetime value."]};
-  const S=st||def;
+  const S={...(st||def)};
+  if(inp.pos==="luxury"){S.p1=[...S.p1,"Announce a limited number of commissions or units and open a waitlist."];S.p3=[...S.p3,"Keep prices firm; protect scarcity even when demand rises."]}
   return[
    {t:"Foundation and testing",when:r(1,p1),amt:budget*.25,items:S.p1},
    {t:"Optimise",when:r(p1+1,p1+p2),amt:budget*.35,items:S.p2},
