@@ -286,7 +286,7 @@ button:hover{border-color:var(--muted)}
     <div><label for="target">Revenue target for the period (₹)</label><input id="target" name="target" type="number" min="0" inputmode="numeric"></div>
   </div>
   <div class="two">
-    <div><label for="maxcac">Most you'd pay to win one customer (₹)</label><input id="maxcac" name="maxcac" type="number" min="0" inputmode="numeric"></div>
+    <div><label for="maxcac">Target CAC: most you'd pay to win one customer (₹)</label><input id="maxcac" name="maxcac" type="number" min="0" inputmode="numeric"></div>
     <div><label for="cpm">Your typical cost per 1,000 people reached on ads (₹)</label><input id="cpm" name="cpm" type="number" min="0" inputmode="numeric"></div>
   </div>
   <details id="ratesbox">
@@ -647,9 +647,9 @@ function allocate(inp,budget){
       let t=`your data: ${a.res?a.res.toLocaleString("en-IN")+" "+L[0].replace(" a month","").toLowerCase():a.cust+" customers"} a month`+(a.spend?` from ${inr(a.spend)}`:" at no media cost");
       const cpc=a.cust>0&&a.spend>0?a.spend/a.cust:null;
       if(cpc&&eco0&&eco0.maxCac){
-        if(cpc>eco0.maxCac*1.25){w[c]*=.6;t+=`; ${inr(cpc)} per customer is well above your ${inr(eco0.maxCac)} limit, so it's kept but reduced until conversion improves`}
-        else if(cpc>eco0.maxCac){t+=`; ${inr(cpc)} per customer is slightly above your ${inr(eco0.maxCac)} limit, so it stays at its current spend until conversion improves`;if(a.spend){floor[c]=a.spend;cap[c]=a.spend}}
-        else{t+=`; ${inr(cpc)} per customer, within your ${inr(eco0.maxCac)} limit`;if(a.spend)floor[c]=a.spend}
+        if(cpc>eco0.maxCac*1.25){w[c]*=.6;t+=`; ${inr(cpc)} actual CAC is well above your ${inr(eco0.maxCac)} target CAC, so it's kept but reduced until conversion improves`}
+        else if(cpc>eco0.maxCac){t+=`; ${inr(cpc)} actual CAC is slightly above your ${inr(eco0.maxCac)} target CAC, so it stays at its current spend until conversion improves`;if(a.spend){floor[c]=a.spend;cap[c]=a.spend}}
+        else{t+=`; ${inr(cpc)} actual CAC, within your ${inr(eco0.maxCac)} target CAC`;if(a.spend)floor[c]=a.spend}
       }else if(a.spend)floor[c]=a.spend;
       if(!a.cust&&a.res)t+=" (directional: enquiry volume, not proven customer cost)";
       ev[c]=t;
@@ -698,7 +698,7 @@ function allocate(inp,budget){
   let fit=null;const F=state._previewing?null:state.fit;
   if(F&&F.mode==="reassign"&&F.acq>0){
     const acqRows=rows.filter(r=>!["foundation","test","crm"].includes(r.c));const acqAmt=acqRows.reduce((s,r)=>s+r.share,0)*budget;
-    if(acqAmt>F.acq){const k=F.acq/acqAmt;const moved=(1-k)*acqRows.reduce((s,r)=>s+r.share,0);acqRows.forEach(r=>{r.share*=k;r.why.push("capped so acquisition stays within your cost limit")});
+    if(acqAmt>F.acq){const k=F.acq/acqAmt;const moved=(1-k)*acqRows.reduce((s,r)=>s+r.share,0);acqRows.forEach(r=>{r.share*=k;r.why.push("capped so acquisition stays within your target CAC")});
       const dest=rows.filter(r=>["foundation","crm","test"].includes(r.c));const wts={foundation:.4,crm:.3,test:.3};const tw=dest.reduce((s,r)=>s+wts[r.c],0);
       dest.forEach(r=>{r.share+=moved*wts[r.c]/tw;r.why.push("receives budget moved out of acquisition: non-acquisition spend (infrastructure, follow-up, testing)")});
       fit={mode:"reassign",moved:moved*budget,acq:F.acq}}
@@ -714,7 +714,7 @@ function decideRule(r){
   const inp=state.inp,eco=state.eco;if(["foundation","test"].includes(r.c))return"";
   const m=metricFor(inp).toLowerCase().replace(/s$/,"");
   const A=perfAgg(inp)[r.c];if(A&&!A.spend&&A.res)return`Decide on ${perfLabels(inp.journey)[0].toLowerCase()}: keep investing time and content while it holds at ${A.res} or more.`;
-  if(eco&&eco.maxCac&&!["aw","br","en"].includes(inp.goal))return`Decide on cost per customer: increase while it stays under ${inr(eco.maxCac)}; cut if it runs 25% above after two weeks.`;
+  if(eco&&eco.maxCac&&!["aw","br","en"].includes(inp.goal))return`Decide on actual CAC (spend ÷ clients won): increase while it stays under your ${inr(eco.maxCac)} target CAC; cut if it runs 25% above after two weeks.`;
   if(["seo","pr"].includes(r.c))return`Decide on rankings, coverage and mentions for the first two to three months, then cost per ${m}.`;
   return`Decide on cost per ${m}: increase if it's 20% better than the plan average; cut if 25% worse after two weeks.`;
 }
@@ -768,7 +768,7 @@ function funnel(inp,budget,eco){
   const J=JOURNEYS[inp.journey],R=histRates(inp);
   let units=null,basis=null;
   if(eco&&eco.ordersNeeded){units=Math.ceil(eco.ordersNeeded);basis="revenue target"}
-  else if(eco&&eco.maxCac){units=Math.floor(budget/eco.maxCac);basis="budget ÷ most you'd pay per customer"}
+  else if(eco&&eco.maxCac){units=Math.floor(budget/eco.maxCac);basis="budget ÷ your target CAC"}
   const st=J.stages.map((n,i)=>({n,c:null,rate:i<R.length?R[i]:null}));
   if(units&&units>0){
     st[J.rev].c=units;
@@ -783,22 +783,27 @@ function funnel(inp,budget,eco){
 function execSummary(inp,al,eco,fn){
   const media=al.rows.filter(r=>!["foundation","test"].includes(r.c));
   const J=JOURNEYS[inp.journey];const last=J.stages[J.rev];
-  const kpi={aw:inp.journey==="fans"?"Reach, new followers and saves":"Reach in the target audience and branded search",br:"Reach, saves and branded search",en:"Engagement rate, saves and shares",la:"Trial: first "+J.unit,ld:"Qualified enquiries or leads at or below your maximum cost per customer",sl:last+" at or below your maximum cost per customer",ac:"New "+J.unit+" at or below your maximum cost per customer",rt:"Repeat purchase rate",ex:J.unit[0].toUpperCase()+J.unit.slice(1)+" from the new market"}[inp.goal];
+  const kpi={aw:inp.journey==="fans"?"Reach, new followers and saves":"Reach in the target audience and branded search",br:"Reach, saves and branded search",en:"Engagement rate, saves and shares",la:"Trial: first "+J.unit,ld:"Qualified enquiries or leads at or below your target CAC",sl:last+" at or below your target CAC",ac:"New "+J.unit+" at or below your target CAC",rt:"Repeat purchase rate",ex:J.unit[0].toUpperCase()+J.unit.slice(1)+" from the new market"}[inp.goal];
   const strat=media.map(r=>CHPHRASE[r.c]).filter(Boolean);
   const lst=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
   const strategy=strat.length?(strat[0][0].toUpperCase()+strat[0].slice(1)+(strat.length>1?", supported by "+lst(strat.slice(1)):"")+`, with ${Math.round(al.tP*100)}% held for testing.`):"";
   let risk;const CF=conflicts();
-  if(CF.length)risk=CF[0].t+(CF.length>1?` (and ${CF.length-1} more)`:"")+". See Strategic conflicts.";
+  const CFr=[...(state.status==="unresolved"||state.status==="original"?(state.origConf||[]).filter(c=>FIN.includes(c.id)):[]),...CF.filter(c=>!FIN.includes(c.id))];
+  if(CFr.length)risk=CFr[0].t+(CFr.length>1?` (and ${CFr.length-1} more)`:"")+". See Strategic conflicts.";
   else if(!eco)risk="No economics entered, so there's no limit on what a customer is worth paying for.";
-  else if(fn.basis==="revenue target"&&eco.maxCac&&fn.costPerUnit&&fn.costPerUnit>eco.maxCac)risk=`The target needs ${inr(fn.costPerUnit)} of budget per customer, above your limit of ${inr(eco.maxCac)}.`;
+  else if(fn.basis==="revenue target"&&eco.maxCac&&fn.costPerUnit&&fn.costPerUnit>eco.maxCac)risk=`Implied CAC ${inr(fn.costPerUnit)} is above your ${inr(eco.maxCac)} target CAC.`;
   else if(inp.stage==="new")risk="No proof or conversion data yet; early numbers will be unstable.";
   else if(inp.months===1)risk="One month leaves little time to learn before judging results.";
   else if(fn.anyAssumed)risk="Some conversion rates are planning assumptions until your own results replace them.";
   else risk="Scaling too fast into diminishing returns.";
   const w1=WTASK[FAM(inp.goal)][0].split(". ")[0].replace(/\.$/,"")+".";
   const posStmt=positioning(inp);
-  const fin=CF.filter(c=>["cac","be","reach"].includes(c.id)),oth=CF.filter(c=>!["cac","be","reach"].includes(c.id));
-  const feas=fin.length?`Not financially feasible as entered: ${fin.length} cost conflict${fin.length>1?"s":""} to resolve`+(oth.length?`, plus ${oth.length} decision${oth.length>1?"s":""}`:""):(state.fit?"Feasible after fitting the plan to your cost limit":eco?"Financially feasible on the numbers given":"Not checked: add economics in step 3")+(!fin.length&&oth.length?`; ${oth.length} decision${oth.length>1?"s":""} to review in Strategic conflicts`:"");
+  const oth=CF.filter(c=>!FIN.includes(c.id)),st=state.status;
+  const dec=oth.length?`; ${oth.length} decision${oth.length>1?"s":""} to review in Strategic conflicts`:"";
+  const feas=st==="revised"?`Original allocation not financially feasible. This is the recommended revised plan: implied CAC ${fn.costPerUnit?inr(fn.costPerUnit):"—"}${eco&&eco.maxCac?`, within your ${inr(eco.maxCac)} target CAC`:""}${dec}`
+    :st==="original"?"Original allocation shown: not financially feasible and not the recommendation. Switch to the recommended revised plan in Where to invest"
+    :st==="unresolved"?"Not final: a choice is needed before the budget can be finalised (see Strategic conflicts)"
+    :(eco?"Financially feasible on the numbers given":"Not checked: add economics in step 3")+dec;
   return [["Feasibility",feas],["Objective",GOALS[inp.goal]+(inp.target?` · revenue target ${inr(inp.target)}`:"")],["Core audience",inp.audience||"Not specified"],["Positioning",posStmt],["Strategy",strategy],["Budget",`${inr(state.budget)} over ${inp.months} month${inp.months>1?"s":""} (${inr(al.monthly)} a month)`],["Primary KPI",kpi],["Biggest risk",risk],["First action",w1]];
 }
 function positioning(inp){
@@ -830,7 +835,7 @@ function assumptionRegister(inp,al,eco,fn){
   if(inp.target)u("Revenue target",inr(inp.target),"You entered","High");
   if(eco&&eco.beRoas)u("Break-even return",eco.beRoas.toFixed(2)+"×","Calculated: 1 ÷ margin","High");
   if(eco&&eco.clv)u("Customer lifetime value",inr(eco.clv),"Calculated: order value × margin × lifetime","High");
-  if(eco&&eco.maxCac)u("Maximum cost per customer",inr(eco.maxCac),eco.maxCacSrc==="user"?"You entered":"Calculated: CLV ÷ 3","High");
+  if(eco&&eco.maxCac)u("Target CAC",inr(eco.maxCac),eco.maxCacSrc==="user"?"You entered":"Calculated: CLV ÷ 3","High");
   const J=JOURNEYS[inp.journey];
   (fn.R||inp.rates).forEach((r,i)=>u(`${J.stages[i]} → ${J.stages[i+1].toLowerCase()}`,(+(r.v*100).toFixed(r.v*100<1?2:1))+"%",r.src==="user"?"You entered":r.src==="data"?"Calculated from your current results ("+r.note.replace("derived from your ","")+")":"Planning assumption",r.src==="assumption"?"Low":r.src==="data"?"Medium":"High"));
   if(fn.units)u(J.stages[J.rev]+" needed",Math.ceil(fn.units).toLocaleString("en-IN"),"Calculated from "+fn.basis+(fn.anyAssumed?" and assumed rates":""),fn.anyAssumed?"Low":"High");
@@ -875,7 +880,7 @@ function checks(inp,al,eco){
     if(eco.beRoas&&eco.reqRoas&&eco.reqRoas>=eco.beRoas*2.5)o.push(["warn","Your target needs a blended return of "+eco.reqRoas.toFixed(1)+"× on the total marketing budget. That is ambitious; confirm with a small test before committing the full budget."]);
     if(false&&eco.maxCac&&eco.spendPerOrder&&eco.spendPerOrder>eco.maxCac)o.push(["warn","The budget works out to "+inr(eco.spendPerOrder)+" per order against a maximum affordable CAC of "+inr(eco.maxCac)+" (CLV ÷ 3). Either raise order value, improve repeat rate, or lower the target."]);
     if(eco.beRoas&&eco.m<.25&&["sl","ac"].includes(inp.goal))o.push(["warn","With a "+inp.margin+"% margin, break-even return is "+eco.beRoas.toFixed(1)+"×. Paid acquisition is hard at this margin; weight effort toward order value and repeat purchase."]);
-  }else o.push(["ok","Add order value and margin in step 3, Economics, to get break-even ROAS, the most you can pay per customer, and funnel targets."]);
+  }else o.push(["ok","Add order value and margin in step 3, Economics, to get break-even return, target CAC and funnel targets."]);
   if(inp.rates&&inp.rates.some(r=>r.src==="assumption"))o.push(["ok","Some conversion rates are planning assumptions. Replace them with your own figures under 'Your conversion rates' once you have two weeks of results."]);
   if(inp.stage==="new"&&["sl","ac"].includes(inp.goal))o.push(["ok","New brands selling straight away face high perceived risk. Reviews, guarantees and creator proof matter more than discounts."]);
   if(inp.goal==="rt"&&!inp.orders)o.push(["ok","For retention, add purchases per customer so the plan can size the value of each retained customer."]);
@@ -1087,20 +1092,22 @@ function reportBlocks(){
   T(["22%","78%"],"",execSummary(inp,al,eco,state.fn).map(x=>`<tr><td style="font-weight:600;color:#5B6B82">${e(x[0])}</td><td>${e(x[1])}</td></tr>`));
   const CFp=conflicts(),NCp=notChecked();
   H2("Strategic conflicts and decisions");
-  if(fitNote())P(`<div class="box"><b>Plan fitted to your limit.</b> ${e(fitNote())}</div>`);
-  if(CFp.length)CFp.forEach(c=>{B.push({k:1,h:`<h3 style="color:#9E2F42">⚠ ${e(c.t)}</h3>`});
-    P(`<div class="box" style="border-left-color:#B63A4E"><b>Evidence</b><ul>${c.ev.map(x=>`<li>${e(x)}</li>`).join("")}</ul><b>Business impact</b><div>${e(c.im)}</div><b>Options</b><ol style="margin:2px 0 0;padding-left:16px">${c.op.map(x=>`<li>${e(x)}</li>`).join("")}</ol><div style="margin-top:6px"><b>Recommended:</b> ${e(c.rec)}</div></div>`)});
-  else P(`<div class="check">No conflicts found between budget, economics, targets and channels.</div>`);
-  if(NCp.length)P(`<div class="muted">Not checked yet: ${e(NCp.join("; "))}.</div>`);
+  {const st=state.status,ST=statusText();if(ST)P(`<div class="box"${st==="revised"?"":' style="border-left-color:#B63A4E"'}>${e(ST)}</div>`);
+   if(st==="revised"||st==="original")T(["40%","30%","30%"],`<tr><th></th><th class="r">Original plan</th><th class="r">Recommended revised plan</th></tr>`,cmpRows().map(r=>`<tr><td>${e(r[0])}</td><td class="r">${e(String(r[1]))}</td><td class="r">${e(String(r[2]))}</td></tr>`));
+   const L2=conflictList();
+   if(L2.length)L2.forEach(c=>{B.push({k:1,h:`<h3 style="color:#9E2F42">⚠ ${e(c.t)}</h3>`});
+     P(`<div class="box" style="border-left-color:#B63A4E">${conflictStatus(c)?`<b>${e(conflictStatus(c))}</b><br>`:""}<b>Evidence${FIN.includes(c.id)?" (original plan)":""}</b><ul>${c.ev.map(x=>`<li>${e(x)}</li>`).join("")}</ul><b>Business impact</b><div>${e(c.im)}</div><b>Options</b><ol style="margin:2px 0 0;padding-left:16px">${c.op.map(x=>`<li>${e(x)}</li>`).join("")}</ol><div style="margin-top:6px"><b>Recommended:</b> ${e(c.rec)}</div></div>`)});
+   else P(`<div class="check">No conflicts found between budget, economics, targets and channels.</div>`);
+   if(NCp.length)P(`<div class="muted">Not checked yet: ${e(NCp.join("; "))}.</div>`);}
   const PAp=perfAnalysis();
   if(PAp){H2("Your current performance");
     const Dp=dq();if(Dp.noCust||Dp.partial)P(`<div class="check warn"><b>Data quality:</b> ${Dp.noCust?"Clients by channel weren't provided":"Clients are missing for some channels"}, so channel quality can't be compared reliably. Enquiry volume and cost per enquiry are directional evidence, not proof of lower cost per client.</div>`);
-    T(["18%","10%","8%","8%","10%","10%","9%","15%","12%"],`<tr><th>Channel</th><th class="r">Spend now</th><th class="r">Results</th><th class="r">Share</th><th class="r">Cost each</th><th class="r">Per customer</th><th class="r">Return</th><th>Verdict</th><th class="r">Plan/month</th></tr>`,PAp.rows.map(x=>`<tr><td>${e(x.nm)}</td><td class="r">${inr(x.p.spend)}</td><td class="r">${x.p.res||"—"}</td><td class="r">${PAp.T.res?(x.p.res/PAp.T.res*100).toFixed(1)+"%":"—"}</td><td class="r">${x.cpr?inr(x.cpr):"—"}</td><td class="r">${x.cpc?inr(x.cpc):"—"}</td><td class="r">${x.ret?x.ret.toFixed(2)+"×":"—"}</td><td><b>${e(x.v)}</b></td><td class="r">${x.plan?inr(x.plan):"—"}</td></tr>`));
-    P(`<div class="muted">${PAp.T.blended?`Blended return now: ${PAp.T.blended.toFixed(2)}× (all spend). `:""}${PAp.T.paidRoas?`Paid-media ROAS now: ${PAp.T.paidRoas.toFixed(2)}× (paid channels only). `:""}${PAp.T.cpc?`Cost per customer now: ${inr(PAp.T.cpc)}.`:""}</div>`)}
+    T(["18%","10%","8%","8%","10%","10%","9%","15%","12%"],`<tr><th>Channel</th><th class="r">Spend now</th><th class="r">Results</th><th class="r">Share</th><th class="r">Cost each</th><th class="r">Actual CAC</th><th class="r">Return</th><th>Verdict</th><th class="r">Plan/month</th></tr>`,PAp.rows.map(x=>`<tr><td>${e(x.nm)}</td><td class="r">${inr(x.p.spend)}</td><td class="r">${x.p.res||"—"}</td><td class="r">${PAp.T.res?(x.p.res/PAp.T.res*100).toFixed(1)+"%":"—"}</td><td class="r">${x.cpr?inr(x.cpr):"—"}</td><td class="r">${x.cpc?inr(x.cpc):"—"}</td><td class="r">${x.ret?x.ret.toFixed(2)+"×":"—"}</td><td><b>${e(x.v)}</b></td><td class="r">${x.plan?inr(x.plan):"—"}</td></tr>`));
+    P(`<div class="muted">${PAp.T.blended?`Blended return now: ${PAp.T.blended.toFixed(2)}× (all spend). `:""}${PAp.T.paidRoas?`Paid-media ROAS now: ${PAp.T.paidRoas.toFixed(2)}× (paid channels only). `:""}${PAp.T.cpc?`Actual CAC now: ${inr(PAp.T.cpc)}.`:""}</div>`)}
   H2("Readiness check");
   B.push({k:1,h:`<div>${rdp.overall===null?"Not assessed yet: checklist not answered.":`<b style="font-size:16px">${rdp.overall}%</b> of answered items in place.${rdp.weakest&&rdp.weakest.sc<100?` Weakest area: <b>${e(rdp.weakest.n)}</b>. ${e(rdp.weakest.tip)}`:""}`} <span class="muted">Input completeness: ${rdp.completeness}%.</span></div>`});
   T(["30%","52%","18%"],"",rdp.dims.map(d=>`<tr><td>${e(d.n)}</td><td>${d.sc===null?"":`<div style="height:9px;background:#EEF1F5;border-radius:4px"><div style="height:9px;width:${d.sc}%;background:#E0A21A;border-radius:4px"></div></div>`}</td><td class="r">${d.sc===null?"Not assessed":d.sc+"%"}</td></tr>`));
-  H2("Budget allocation");
+  H2({revised:"Recommended revised plan: budget allocation",original:"Original plan (not financially feasible): budget allocation",unresolved:"Budget allocation (not final)"}[state.status]||"Budget allocation");
   B.push({k:1,h:`<div class="bar">${al.rows.map(r=>`<span style="flex-grow:${r.share};background:${CH[r.c].c}"></span>`).join("")}</div>`});
   T(["38%","26%","10%","13%","13%"],`<tr><th>Channel</th><th>Role</th><th class="r">Share</th><th class="r">Total</th><th class="r">Per month</th></tr>`,
     [...al.rows.map(r=>`<tr><td><span class="sw" style="background:${CH[r.c].c}"></span>${e(CH[r.c].n)}<span class="why">${e(whyText(r))}${decideRule(r)?" "+e(decideRule(r)):""}</span></td><td class="muted">${e(CH[r.c].f)}</td><td class="r">${r.pct}%</td><td class="r">${inr(r.amt)}</td><td class="r">${inr(r.mo)}</td></tr>`),
@@ -1113,12 +1120,12 @@ function reportBlocks(){
   if(fnr.units){H2("Funnel model");B.push({k:1,h:`<div class="muted">Worked backwards from your ${e(fnr.basis)}. Rates marked <span class="as">assumed</span> are planning placeholders.</div>`});
     const mx=fnr.st[0].c;
     T(["34%","44%","22%"],`<tr><th>Stage</th><th></th><th class="r">Needed</th></tr>`,fnr.st.map(x=>`<tr><td>${e(x.n)}${x.rate?`<span class="why">↓ next: ${(x.rate.v*100).toFixed(2).replace(/\.?0+$/,"")}% ${x.rate.src==="user"?"your rate":x.rate.src==="data"?"from your results":'<span class="as">assumed</span>'}</span>`:""}</td><td><div class="fbar" style="width:${Math.max(1,Math.sqrt(x.c/mx)*100)}%"></div></td><td class="r">${Math.round(x.c).toLocaleString("en-IN")}</td></tr>`));
-    T(["50%","50%"],"",[`<tr><td>Budget per ${e(fnr.J.stages[fnr.J.rev].toLowerCase())}</td><td class="r">${inr(fnr.costPerUnit)}</td></tr>`,`<tr><td>Budget per 1,000 people reached</td><td class="r">${inr(fnr.costPer1000)}</td></tr>`]);}
+    T(["50%","50%"],"",[`<tr><td>Implied CAC (${e(fnr.cpuLabel)} ÷ target ${e(fnr.J.stages[fnr.J.rev].toLowerCase())})</td><td class="r">${inr(fnr.costPerUnit)}</td></tr>`,`<tr><td>Budget per 1,000 people reached</td><td class="r">${inr(fnr.costPer1000)}</td></tr>`]);}
   const er=ecoRows(inp,eco);
   if(er.length){H2("Spending limits");T(["34%","18%","48%"],"",er.map(x=>`<tr><td style="font-weight:600">${e(x[0])}</td><td class="r">${x[1]}</td><td class="muted">${e(x[2])}</td></tr>`))}
   const scp=scenarios();
   if(scp){H2("Scenarios");B.push({k:1,h:`<div class="muted">Planning scenarios, not forecasts: same budget and reach, conversion 30% worse or better than planned.</div>`});
-    T(["17%","29%","12%","14%","16%","12%"],`<tr><th>Scenario</th><th>Assumption</th><th class="r">Customers</th><th class="r">Revenue</th><th class="r">Per customer</th><th class="r">Blended return</th></tr>`,scp.map(x=>`<tr><td><b>${x.n}</b></td><td class="muted">${e(x.a)}</td><td class="r">${x.u.toLocaleString("en-IN")}</td><td class="r">${x.rev!=null?inr(x.rev):"—"}</td><td class="r">${x.cpu?inr(x.cpu):"—"}</td><td class="r">${x.roas!=null?x.roas.toFixed(2)+"×":"—"}</td></tr>`))}
+    T(["17%","29%","12%","14%","16%","12%"],`<tr><th>Scenario</th><th>Assumption</th><th class="r">Customers</th><th class="r">Revenue</th><th class="r">Implied CAC</th><th class="r">Blended return</th></tr>`,scp.map(x=>`<tr><td><b>${x.n}</b></td><td class="muted">${e(x.a)}</td><td class="r">${x.u.toLocaleString("en-IN")}</td><td class="r">${x.rev!=null?inr(x.rev):"—"}</td><td class="r">${x.cpu?inr(x.cpu):"—"}</td><td class="r">${x.roas!=null?x.roas.toFixed(2)+"×":"—"}</td></tr>`))}
   H2("Roadmap");
   ph.forEach(p=>{H3(p.t,`${e(p.when)} · about ${inr(p.amt)}`);P(`<ul>${p.items.map(t=>`<li>${e(t)}</li>`).join("")}</ul>`)});
   B.push({pb:1});
@@ -1269,14 +1276,14 @@ function decide(){
   const judged=rows.filter(x=>x.sp>0&&wk>=1&&x.sp>=0.5*x.planned&&x.rs>0);
   const J=JOURNEYS[inp.journey];const useCac=eco&&eco.maxCac&&metricFor(inp)===J.stages[J.rev];
   const bench=useCac?eco.maxCac:(judged.length>=2?judged.reduce((s,x)=>s+x.sp,0)/judged.reduce((s,x)=>s+x.rs,0):null);
-  const benchLabel=useCac?"your limit of "+inr(eco.maxCac)+" per customer":(bench?"the plan average of "+inr(bench)+" per result":null);
+  const benchLabel=useCac?"your "+inr(eco.maxCac)+" target CAC":(bench?"the plan average of "+inr(bench)+" per result":null);
   rows.forEach(x=>{
     if(!x.sp){x.d="wait";x.why="No results entered yet.";return}
     if(wk<1||x.sp<0.5*x.planned){x.d="wait";x.why=`Keep running: ${inr(x.sp)} spent so far is too little to judge (plan: about ${inr(x.planned)} by now).`;return}
     if(["seo","pr"].includes(x.r.c)&&wk<8){x.d="wait";x.why=`Keep running: ${CH[x.r.c].n.split(" ")[0]} usually takes two to three months to show results. Judge it on rankings, coverage or mentions until then.`;return}
     if(x.rs===0){x.d=wk>=2?"stop":"opt";x.why=wk>=2?`No results after ${wk} weeks and ${inr(x.sp)}.`:`No results yet after ${inr(x.sp)}; change the creative or audience before judging.`;return}
     const roas=x.rv>0?x.rv/x.sp:null;
-    if(!bench){x.d="opt";x.why=`${inr(x.cpr)} per result. Enter results for at least two channels, or your maximum cost per customer, to compare.`;return}
+    if(!bench){x.d="opt";x.why=`${inr(x.cpr)} per result. Enter results for at least two channels, or your target CAC, to compare.`;return}
     const ratio=x.cpr/bench;
     if(ratio<=0.8){x.d="scale";x.why=`${inr(x.cpr)} per result, at least 20% better than ${benchLabel}.`}
     else if(ratio<=1.25){x.d="opt";x.why=`${inr(x.cpr)} per result, close to ${benchLabel}. Test new creative or audiences to improve it.`}
@@ -1391,10 +1398,10 @@ function paintPhase3(){
   };
   paintRD();
   const sc=scenarios(),ss=$("#scn-sec");
-  if(!sc){ss.innerHTML=`<h2>Scenarios</h2><p class="muted" style="margin:0">Add a revenue target with order value, or the most you'd pay per customer, in step 3 to compare conservative, base and ambitious outcomes.</p>`}
+  if(!sc){ss.innerHTML=`<h2>Scenarios</h2><p class="muted" style="margin:0">Add a revenue target with order value, or your target CAC, in step 3 to compare conservative, base and ambitious outcomes.</p>`}
   else{const unit=JOURNEYS[inp.journey].stages[JOURNEYS[inp.journey].rev];
     ss.innerHTML=`<h2>Scenarios</h2><p class="small muted" style="margin-top:0">Planning scenarios, not forecasts: the same budget and reach, with conversion through the funnel 30% worse or better than planned.</p>
-    <div class="tablewrap"><table class="alloc scn"><thead><tr><th>Scenario</th><th>Assumption</th><th>${esc(unit)}</th><th>Revenue</th><th>Budget per customer</th><th>Blended return</th></tr></thead><tbody>${sc.map(x=>`<tr><td><b>${x.n}</b></td><td class="small muted">${esc(x.a)}</td><td>${x.u.toLocaleString("en-IN")}</td><td>${x.rev!=null?inr(x.rev):"—"}</td><td>${x.cpu?inr(x.cpu):"—"}${eco&&eco.maxCac&&x.cpu?`<div class="small ${x.cpu<=eco.maxCac?"":"muted"}" style="color:${x.cpu<=eco.maxCac?"var(--pos)":"var(--neg)"}">${x.cpu<=eco.maxCac?"within limit":"above limit"}</div>`:""}</td><td>${x.roas!=null?x.roas.toFixed(2)+"×":"—"}${eco&&eco.beRoas&&x.roas!=null?`<div class="small" style="color:${x.roas>=eco.beRoas?"var(--pos)":"var(--neg)"}">${x.roas>=eco.beRoas?"above":"below"} break-even</div>`:""}</td></tr>`).join("")}</tbody></table></div>`}
+    <div class="tablewrap"><table class="alloc scn"><thead><tr><th>Scenario</th><th>Assumption</th><th>${esc(unit)}</th><th>Revenue</th><th>Implied CAC</th><th>Blended return</th></tr></thead><tbody>${sc.map(x=>`<tr><td><b>${x.n}</b></td><td class="small muted">${esc(x.a)}</td><td>${x.u.toLocaleString("en-IN")}</td><td>${x.rev!=null?inr(x.rev):"—"}</td><td>${x.cpu?inr(x.cpu):"—"}${eco&&eco.maxCac&&x.cpu?`<div class="small ${x.cpu<=eco.maxCac?"":"muted"}" style="color:${x.cpu<=eco.maxCac?"var(--pos)":"var(--neg)"}">${x.cpu<=eco.maxCac?"within target CAC":"above target CAC"}</div>`:""}</td><td>${x.roas!=null?x.roas.toFixed(2)+"×":"—"}${eco&&eco.beRoas&&x.roas!=null?`<div class="small" style="color:${x.roas>=eco.beRoas?"var(--pos)":"var(--neg)"}">${x.roas>=eco.beRoas?"above":"below"} break-even</div>`:""}</td></tr>`).join("")}</tbody></table></div>`}
   const paintSV=()=>{const L=savedList();const sel=state.cmpSel||[];
     $("#sv-sec").innerHTML=`<h2>Saved plans</h2><p class="small muted" style="margin-top:0">Save versions of this plan to reload later or compare two side by side. Stored in this browser only.</p>
     <button type="button" id="svb">Save this plan</button> <span class="small muted" id="svo" role="status"></span>
@@ -1405,7 +1412,7 @@ function paintPhase3(){
     $("#sv-sec").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{if(!confirm("Delete this saved plan?"))return;setSaved(savedList().filter(x=>x.id!=b.dataset.del));state.cmpSel=(state.cmpSel||[]).filter(x=>x!=b.dataset.del);paintSV()}));
     $("#sv-sec").querySelectorAll("[data-sel]").forEach(c=>c.addEventListener("change",()=>{let s2=state.cmpSel||[];const id=+c.dataset.sel;s2=c.checked?[...s2.filter(x=>x!==id),id].slice(-2):s2.filter(x=>x!==id);state.cmpSel=s2;paintSV()}));
     const pick=L.filter(p=>sel.includes(p.id));
-    if(pick.length===2){const F=[["Goal","goal"],["How customers buy","journey"],["Positioning","pos"],["Budget","budget"],["Months","months"],["Channel split","split"],["Customers from funnel","units"],["Budget per customer","cpu"],["Most you'd pay per customer","maxcac"],["Feasibility","feas"],["Readiness","ready"],["Biggest risk","risk"]];
+    if(pick.length===2){const F=[["Goal","goal"],["How customers buy","journey"],["Positioning","pos"],["Budget","budget"],["Months","months"],["Channel split","split"],["Customers from funnel","units"],["Implied CAC","cpu"],["Target CAC","maxcac"],["Feasibility","feas"],["Readiness","ready"],["Biggest risk","risk"]];
       $("#cmpout").innerHTML=`<h3 style="margin-top:16px">Comparison</h3><div class="tablewrap"><table class="mini"><tr><td></td><td><b>${esc(pick[0].label)}</b></td><td><b>${esc(pick[1].label)}</b></td></tr>${F.map(f=>`<tr><td>${f[0]}</td><td>${esc(String(pick[0].out[f[1]]??""))}</td><td>${esc(String(pick[1].out[f[1]]??""))}</td></tr>`).join("")}</table></div>`}
     else if(L.length>=2)$("#cmpout").innerHTML=`<p class="small muted">Tick two saved plans to compare them.</p>`;
   };
@@ -1439,25 +1446,27 @@ function conflicts(){
   if(fn.basis==="revenue target"&&eco&&eco.maxCac&&fn.costPerUnit>eco.maxCac){
     const cpu=fn.costPerUnit,lim=eco.maxCac,f=cpu/lim,O=[];let best=null;const cand=[];
     const ri=J.rev-1,r0=(fn.R||inp.rates)[ri].v,r1=r0*f;
-    if(r1<=0.95){O.push(`Improve conversion: raise ${J.stages[ri].toLowerCase()} → ${u} from ${(r0*100).toFixed(1)}% to ${(r1*100).toFixed(1)}%. Same budget, ${fn.units} ${u}, ${inr(budget/fn.units*r0/r1)} each.`);cand.push([f-1,`raise ${J.stages[ri].toLowerCase()} → ${u} conversion from ${(r0*100).toFixed(1)}% to ${(r1*100).toFixed(1)}%`,`${fn.units} ${u} at about ${inr(lim)} each, within your limit`])}
+    if(r1<=0.95){O.push(`Improve conversion: raise ${J.stages[ri].toLowerCase()} → ${u} from ${(r0*100).toFixed(1)}% to ${(r1*100).toFixed(1)}%. Same budget, ${fn.units} ${u}, implied CAC ${inr(budget/fn.units*r0/r1)}.`);cand.push([f-1,`raise ${J.stages[ri].toLowerCase()} → ${u} conversion from ${(r0*100).toFixed(1)}% to ${(r1*100).toFixed(1)}%`,`${fn.units} ${u} at about ${inr(lim)} each, within your limit`])}
     else O.push(`Improve conversion across the whole funnel by ${pct(f-1)}; one stage alone can't close a gap this large.`);
     if(eco.maxCacSrc==="calc"&&inp.aov&&inp.margin&&inp.orders){const aov2=cpu*3/(inp.margin/100*inp.orders),or2=cpu*3/(inp.aov*inp.margin/100);
-      O.push(`Raise customer value: average value from ${inr(inp.aov)} to about ${inr(aov2)}, or ${J.life.toLowerCase()} from ${inp.orders} to about ${or2.toFixed(1)}. That lifts your affordable limit to ${inr(cpu)}.`);cand.push([aov2/inp.aov-1,`raise average value to about ${inr(aov2)} (or lifetime to ${or2.toFixed(1)})`,`your limit rises to ${inr(cpu)}, matching the plan`])}
-    else if(eco.maxCacSrc==="user")O.push(`Raise your limit from ${inr(lim)} to ${inr(cpu)}, only if lifetime value${eco.clv?" ("+inr(eco.clv)+")":""} supports it.`);
+      O.push(`Raise customer value: average value from ${inr(inp.aov)} to about ${inr(aov2)}, or ${J.life.toLowerCase()} from ${inp.orders} to about ${or2.toFixed(1)}. That lifts your target CAC to ${inr(cpu)}.`);cand.push([aov2/inp.aov-1,`raise average value to about ${inr(aov2)} (or lifetime to ${or2.toFixed(1)})`,`your target CAC rises to ${inr(cpu)}, matching the plan`])}
+    else if(eco.maxCacSrc==="user")O.push(`Raise your target CAC from ${inr(lim)} to ${inr(cpu)}, only if lifetime value${eco.clv?" ("+inr(eco.clv)+")":""} supports it.`);
     const b2=fn.units*lim;const paidShare=al.rows.filter(r=>PAID.includes(r.c)).reduce((s,r)=>s+r.share,0);
     let reachOK=null;if(inp.cpm>0){reachOK=(b2*paidShare)/inp.cpm*1000>=fn.st[0].c}
     O.push(`Spend less for the same target: ${inr(b2)} instead of ${inr(budget)} for ${fn.units} ${u} at ${inr(lim)} each.`+(reachOK===null?" Works only if the smaller budget still reaches the "+Math.round(fn.st[0].c).toLocaleString("en-IN")+" people the funnel needs; add your cost per 1,000 in step 3 to check.":reachOK?` Reach check passes: the paid share of ${inr(b2)} still reaches the ${Math.round(fn.st[0].c).toLocaleString("en-IN")} people needed at your ${inr(inp.cpm)} per 1,000.`:` Reach check fails: the paid share of ${inr(b2)} can't reach the ${Math.round(fn.st[0].c).toLocaleString("en-IN")} people needed.`));
-    if(reachOK!==false)cand.push([1-b2/budget,`spend ${inr(b2)} instead of ${inr(budget)}`+(reachOK?" (reach check passes)":""),`${fn.units} ${u} at ${inr(lim)} each, within your limit`]);
+    if(reachOK!==false)cand.push([1-b2/budget,`spend ${inr(b2)} instead of ${inr(budget)}`+(reachOK?" (reach check passes)":""),`${fn.units} ${u} at an implied CAC of ${inr(lim)}, within your target CAC`]);
     cand.sort((a,b)=>a[0]-b[0]);best=cand[0];
     const nonAcq=al.rows.filter(r=>!r.acq).reduce((s,r)=>s+r.amt,0);
     if(!state._previewing){state._previewing=true;try{const pv=allocate(inp,b2);O.push(`Preview of the plan at ${inr(b2)}: ${pv.rows.map(r=>CH[r.c].n.split(" (")[0]+" "+inr(r.amt)).join(", ")}.`)}finally{state._previewing=false}}
-    C.push({id:"cac",b2,t:"Cost per customer is above your limit",ev:[`${fn.cpuLabel==="acquisition spend"?"Acquisition spend":"Budget"} per ${u.replace(/s$/,"")}: ${inr(cpu)} (${inr(fn.acqSpend)} ÷ ${fn.units})`,`Your limit: ${inr(lim)}`,`Gap: ${inr(cpu-lim)} per customer, ${pct(f-1)} above the limit`],
+    const aff=Math.max(1,Math.floor(budget/lim));
+    const choose=`your target CAC (raise it to ${inr(cpu)}), your revenue target (about ${aff} ${u}${eco.perUnit?`, ${inr(aff*eco.perUnit)}`:""}), or your actual ${J.stages[ri].toLowerCase()} → ${u} conversion rate (enter it in step 3)`;
+    C.push({id:"cac",b2,b2ok:reachOK,choose,t:"Implied CAC is above your target CAC",ev:[`Implied CAC: ${inr(cpu)} (${fn.cpuLabel} ${inr(fn.acqSpend)} ÷ ${fn.units} target ${u}). No actual acquisition data sits behind this figure`,`Your target CAC: ${inr(lim)}`,`Gap: ${inr(cpu-lim)} per customer, ${pct(f-1)} above your target CAC`],
       im:`To win ${fn.units} ${u} at ${inr(lim)} each, acquisition spend can be at most ${inr(b2)}. ${inr(fn.acqSpend-b2)} of the ${inr(budget)} can't be justified as acquisition spend unless it goes to infrastructure, follow-up, brand-building or testing${nonAcq?` (the plan currently has ${inr(nonAcq)} there)`:""}.`,op:O,
-      rec:best?`Smallest change that closes the gap: ${best[1]} (a ${pct(Math.abs(best[0]))} change). Recalculated: ${best[2]}.`:"Revise the target or the limit before committing the budget."});
+      rec:best?`Smallest change that closes the gap: ${best[1]} (a ${pct(Math.abs(best[0]))} change). Recalculated: ${best[2]}.`:"Revise the target or the target CAC before committing the budget."});
   }
   if(eco&&eco.beRoas&&eco.reqRoas&&eco.reqRoas<eco.beRoas){
     const m=inp.margin/100,loss=budget-inp.target*m;
-    C.push({id:"be",t:"Revenue target doesn't cover the marketing spend",ev:[`Target ${inr(inp.target)} ÷ budget ${inr(budget)} = ${eco.reqRoas.toFixed(2)}× blended return`,`Needed to break even at ${inp.margin}% margin: ${eco.beRoas.toFixed(2)}×`],
+    C.push({id:"be",beBudget:inp.target*m,t:"Revenue target doesn't cover the marketing spend",ev:[`Target ${inr(inp.target)} ÷ budget ${inr(budget)} = ${eco.reqRoas.toFixed(2)}× blended return`,`Needed to break even at ${inp.margin}% margin: ${eco.beRoas.toFixed(2)}×`],
       im:`Even if the target is hit, contribution (${inr(inp.target*m)}) falls ${inr(loss)} short of the budget.`,
       op:[`Raise the target to at least ${inr(budget*eco.beRoas)}.`,`Cut the budget to ${inr(inp.target*m)} (break-even for this target).`,`Raise gross margin to at least ${Math.ceil(budget/inp.target*100)}%.`,`Accept the loss deliberately as an investment in lifetime value${eco.clv?" (each customer is worth "+inr(eco.clv)+" over time)":""}.`],
       rec:eco.clv&&inp.orders>1?"If repeat purchases are reliable, judge on lifetime value; otherwise cut the budget to break-even.":`Cut the budget to about ${inr(inp.target*m)}, or raise the target to ${inr(budget*eco.beRoas)}.`});
@@ -1465,7 +1474,7 @@ function conflicts(){
   if(inp.cpm>0&&fn.units&&fn.st[0].c){
     const paid=al.rows.filter(r=>PAID.includes(r.c)).reduce((s,r)=>s+r.amt,0);const del=paid/inp.cpm*1000,need=fn.st[0].c;
     if(del<need){const prodR=(fn.R||inp.rates).slice(0,J.rev).reduce((p,r)=>p*r.v,1);const u2=Math.floor(del*prodR);
-      C.push({id:"reach",t:"Paid media can't deliver the reach the funnel needs",ev:[`Funnel needs ${Math.round(need).toLocaleString("en-IN")} people reached`,`Paid-media budget ${inr(paid)} at your ${inr(inp.cpm)} per 1,000 reaches about ${Math.round(del).toLocaleString("en-IN")}`,`Gap: ${Math.round(need-del).toLocaleString("en-IN")} people (${pct(1-del/need)} of the need)`],
+      C.push({id:"reach",choose:`the revenue target to commit to: about ${u2} ${u}${eco&&eco.perUnit?` (${inr(u2*eco.perUnit)})`:""} from paid reach, or keep the current target and confirm organic, creators and referrals will reach about ${Math.round(need-del).toLocaleString("en-IN")} people`,t:"Paid media can't deliver the reach the funnel needs",ev:[`Funnel needs ${Math.round(need).toLocaleString("en-IN")} people reached`,`Paid-media budget ${inr(paid)} at your ${inr(inp.cpm)} per 1,000 reaches about ${Math.round(del).toLocaleString("en-IN")}`,`Gap: ${Math.round(need-del).toLocaleString("en-IN")} people (${pct(1-del/need)} of the need)`],
         im:`Paid media alone would produce about ${u2} ${u}, not ${fn.units}.`,
         op:[`Close the gap with organic content, creators and referrals: they must reach about ${Math.round(need-del).toLocaleString("en-IN")} people.`,`Improve conversion so fewer people are needed.`,`Revise the target to what paid reach supports: about ${u2} ${u}${eco&&eco.perUnit?` (${inr(u2*eco.perUnit)})`:""}.`],
         rec:u2>=fn.units*0.7?"The gap is modest: plan organic and creator reach to cover it and track weekly.":`Treat ${u2} ${u} as the paid-media baseline and set the target around it until organic reach is proven.`});}
@@ -1477,15 +1486,43 @@ function conflicts(){
   if(moNow>moPlan*1.05)C.push({id:"under",t:"Plan budget is below what you spend now",ev:[`You spend ${inr(moNow)} a month today on the channels in step 4`,`The plan budget is ${inr(moPlan)} a month`],
     im:`Current channels must be cut by about ${pct(1-moPlan*0.8/moNow)} on average; expect fewer ${perfLabels(inp.journey)[0].replace(" a month","").toLowerCase()} unless efficiency improves.`,
     op:[`Raise the plan budget to about ${inr(moNow/0.84*inp.months)}${inp.months>1?` over ${inp.months} months (${inr(moNow/0.84)} a month)`:""} to keep current activity plus tracking and testing.`,`Accept the cut: the plan reduces paid channels in proportion and keeps free sources.`,`Cut the channel with the weakest customer results first, once customer data by channel is available.`],
-    rec:dq().noCust?"Cut in proportion for now (the plan does this), and record clients by channel so the next cut can follow real customer cost.":"Cut the channels with the highest cost per customer first."});
+    rec:dq().noCust?"Cut in proportion for now (the plan does this), and record clients by channel so the next cut can follow actual CAC by channel.":"Cut the channels with the highest cost per customer first."});
   if(eco&&eco.maxCac){const bad=Object.entries(A).filter(([c,a])=>a.cust>0&&a.spend>0&&a.spend/a.cust>eco.maxCac*1.25);
-    if(bad.length)C.push({t:"Some current channels cost more than your limit",ev:bad.map(([c,a])=>`${CH[c].n}: ${inr(a.spend/a.cust)} per customer vs ${inr(eco.maxCac)} limit`),
-      im:"Scaling these as they are would raise overall cost per customer.",op:["Keep them running but reduce spend (the plan already does this).","Fix the landing page, offer or follow-up before adding budget.","Check whether they assist other channels before cutting further."],rec:"Reduce and fix, then re-test for two weeks."});}
+    if(bad.length)C.push({t:"Some channels' actual CAC is above your target CAC",ev:bad.map(([c,a])=>`${CH[c].n}: actual CAC ${inr(a.spend/a.cust)} vs ${inr(eco.maxCac)} target CAC`),
+      im:"Scaling these as they are would raise overall actual CAC.",op:["Keep them running but reduce spend (the plan already does this).","Fix the landing page, offer or follow-up before adding budget.","Check whether they assist other channels before cutting further."],rec:"Reduce and fix, then re-test for two weeks."});}
   return C;
 }
-function fitNote(){const F=state.fit,al=state.al,fn=state.fn,eco=state.eco;if(!F)return null;
-  if(F.mode==="cut")return`Applied: budget cut to ${inr(state.budget)} so each of the ${fn.units} ${fn.J.stages[fn.J.rev].toLowerCase()} costs ${inr(fn.costPerUnit)}${eco&&eco.maxCac?`, within your ${inr(eco.maxCac)} limit`:""}. Revised targets: ${fn.units} ${fn.J.stages[fn.J.rev].toLowerCase()}, ${Math.round(fn.st[0].c).toLocaleString("en-IN")} people reached.`;
-  if(F.mode==="reassign"&&al.fit)return`Applied: acquisition capped at ${inr(al.fit.acq)} (${inr(fn.costPerUnit)} per ${fn.J.stages[fn.J.rev].toLowerCase().replace(/s$/,"")}); ${inr(al.fit.moved)} moved to infrastructure, follow-up and testing, labelled as non-acquisition spend.`;
+function cmpRows(){const o=state.orig,fn=state.fn,eco=state.eco;if(!o)return[];const u=fn.J.stages[fn.J.rev].toLowerCase();
+  const acqNow=state.al.rows.filter(r=>r.acq).reduce((s,r)=>s+r.amt,0);
+  return[["Total budget",inr(o.budget),inr(state.budget)],["Acquisition spend",inr(o.acq),inr(acqNow)],["Target "+u,o.units??"—",fn.units??"—"],["Implied CAC",o.cpu?inr(o.cpu):"—",fn.costPerUnit?inr(fn.costPerUnit):"—"],["Target CAC",o.lim?inr(o.lim):"—",eco&&eco.maxCac?inr(eco.maxCac):"—"],["Blended return needed",o.reqRoas?o.reqRoas.toFixed(2)+"×":"—",eco&&eco.reqRoas?eco.reqRoas.toFixed(2)+"×":"—"],["Status","Not financially feasible","Meets your constraint"]]}
+function conflictStatus(c){const st=state.status;if(!FIN.includes(c.id))return"";
+  if(st==="revised")return"Resolved in the recommended revised plan.";
+  if(st==="original")return"Resolved in the recommended revised plan (you're viewing the original).";
+  if(st==="unresolved")return c.choose?`Unresolved. Choose ${c.choose}.`:"Unresolved with the information given.";return""}
+function conflictList(){const st=state.status;const fin=st==="ok"?[]:(state.origConf||[]).filter(c=>FIN.includes(c.id));return[...fin,...conflicts().filter(c=>!FIN.includes(c.id)||st==="ok")]}
+function viewButtons(){const st=state.status,R=state.reso;if(!R||!R.ok)return"";const b=[];
+  if(st!=="original")b.push(`<button type="button" class="copy" data-view="original">View original plan</button>`);
+  if(st==="original"||state.view==="reassign")b.push(`<button type="button" class="copy" data-view="auto">Show recommended plan: ${esc(inr(R.budget))} budget</button>`);
+  if(R.acq&&state.view!=="reassign")b.push(`<button type="button" class="copy" data-view="reassign">Alternative: keep ${esc(inr(state.orig.budget))}, cap acquisition at ${esc(inr(R.acq))}</button>`);
+  return b.join("")}
+function bindViews(root){if(!root)return;root.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>{state.view=b.dataset.view;compute();paintAlloc();paintRest();$("#alloc-sec").scrollIntoView({block:"start"})}))}
+function conflictsHTML(){
+  const st=state.status,list=conflictList(),ST=statusText();
+  let h=`<h2>Strategic conflicts and decisions</h2>`;
+  if(ST)h+=`<div class="move" style="margin:0 0 12px;${st==="revised"?"":"background:var(--warn-soft)"}">${esc(ST)}<div class="bar-actions" style="margin-top:8px">${viewButtons()}</div></div>`;
+  if(st==="revised"||st==="original"){const R=cmpRows();h+=`<div class="tablewrap"><table class="alloc"><thead><tr><th></th><th class="num">Original plan</th><th class="num">Recommended revised plan</th></tr></thead><tbody>${R.map(r=>`<tr><td>${esc(r[0])}</td><td class="num">${esc(String(r[1]))}</td><td class="num">${esc(String(r[2]))}</td></tr>`).join("")}</tbody></table></div>`}
+  if(!list.length)return h+`<div class="okline">No conflicts found between budget, economics, targets${state.inp.perf&&state.inp.perf.length?", current performance":""} and channels.</div>`;
+  return h+list.map(c=>`<div class="cf-card"><h3>⚠ ${esc(c.t)}</h3>${conflictStatus(c)?`<div class="small" style="font-weight:600;color:${st==="unresolved"?"var(--neg)":"var(--pos)"}">${esc(conflictStatus(c))}</div>`:""}<div class="lbl">Evidence${FIN.includes(c.id)?" (original plan)":""}</div><ul style="margin:2px 0">${c.ev.map(x=>`<li>${esc(x)}</li>`).join("")}</ul><div class="lbl">Business impact</div><div>${esc(c.im)}</div><div class="lbl">Options</div><ol>${c.op.map(x=>`<li>${esc(x)}</li>`).join("")}</ol><div class="rec"><b>Recommended:</b> ${esc(c.rec)}</div></div>`).join("");
+}
+function statusText(){
+  const st=state.status,o=state.orig,fn=state.fn,eco=state.eco;if(!o||st==="ok")return null;
+  const u=fn.J.stages[fn.J.rev].toLowerCase();const why=(state.origConf||[]).filter(c=>FIN.includes(c.id)).map(c=>c.t[0].toLowerCase()+c.t.slice(1)).join("; ");
+  const reachNote=st==="revised"&&!state.inp.cpm&&state.fit&&state.fit.mode==="cut"?" Reach at the lower budget isn't verified: add your cost per 1,000 people reached in step 3 to check it.":"";
+  if(st==="revised")return state.fit.mode==="reassign"&&state.al.fit
+    ?`Recommended revised plan (alternative): the total ${inr(state.budget)} stays, acquisition is capped at ${inr(state.al.fit.acq)} (implied CAC ${inr(fn.costPerUnit)} for ${fn.units} ${u}${eco&&eco.maxCac?`, within your ${inr(eco.maxCac)} target CAC`:""}), and ${inr(state.al.fit.moved)} moves to infrastructure, follow-up and testing as non-acquisition spend. The original allocation was not financially feasible (${why}).`
+    :`Recommended revised plan: budget ${inr(state.budget)} instead of ${inr(o.budget)}. Implied CAC ${inr(fn.costPerUnit)} for ${fn.units} ${u}${eco&&eco.maxCac?`, within your ${inr(eco.maxCac)} target CAC`:""}. The original allocation was not financially feasible (${why}).${reachNote}`;
+  if(st==="original")return`Original plan shown for reference only. It is not financially feasible (${why}) and is not the recommendation.`;
+  if(st==="unresolved")return`Not final. The plan can't be made feasible from the information given (${why}). Before the budget is finalised, choose ${(state.reso.choices||[]).join("; or ")}.`;
   return null}
 function dq(){const P=state.inp.perf||[];const paid=P.filter(p=>p.res>0);const noCust=paid.length>0&&paid.every(p=>!p.cust);const someCust=paid.some(p=>p.cust);const partial=paid.length>0&&someCust&&paid.some(p=>!p.cust);return{noCust,partial,any:paid.length>0}}
 function notChecked(){const {inp,eco}=state;const N=[];if(!eco)N.push("Economics (add value and margin in step 3)");if(!inp.cpm)N.push("Reach feasibility (add your cost per 1,000 in step 3)");if(!inp.perf||!inp.perf.length)N.push("Current performance (add channels in step 4)");return N}
@@ -1499,9 +1536,12 @@ function validation(){
   ok(working.every(c=>al.rows.some(r=>r.c===c)),working.length?"Every channel producing results for you is kept in the plan":"No current performance entered, so channels come from planning rules","A working channel was dropped");
   const sum=al.rows.reduce((s,r)=>s+r.amt,0);ok(Math.abs(sum-state.budget)<2,"Allocations add up to the budget","Allocations don't add up");
   ok(true,"Paid-media ROAS and blended return are labelled separately","");
-  const C=conflicts();ok(true,C.length?`${C.length} strategic conflict${C.length>1?"s":""} identified, each with options and a recalculation`:"No strategic conflicts found on the numbers given","");
+  const C=conflicts();ok(true,conflictList().length?`${conflictList().length} strategic conflict${conflictList().length>1?"s":""} identified, each with options and a recalculation`:"No strategic conflicts found on the numbers given","");
   const D=dq();if(D.noCust||D.partial)V.push([false,"Channel decisions are directional: clients by channel are missing, so cost per client can't be compared across channels"]);
-  if(fitNote())V.push([true,"Conflict resolved in the plan: "+fitNote()]);
+  if(state.status==="revised")V.push([true,"The original allocation isn't financially feasible, so the plan shown is the recommended revised plan"]);
+  if(state.status==="original")V.push([false,"You're viewing the original allocation, which is not financially feasible and is not the recommendation"]);
+  if(state.status==="unresolved")V.push([false,"Plan not final: a choice is needed before the budget can be finalised (see Strategic conflicts)"]);
+  V.push([true,"CAC terms: implied CAC for planning figures, target CAC for your maximum, actual CAC only where real spend and clients won are known"]);
   const nc=notChecked();if(nc.length)V.push([false,"Not checked yet: "+nc.join("; ")]);
   ok(al.rows.every(r=>(r.why||[]).length),"Every allocation has a stated reason","");
   return V;
@@ -1516,15 +1556,38 @@ $("#f").addEventListener("submit",e=>{
   if(!inp.name||!inp.industry){err.textContent="Enter the company name and industry.";return}
   if(!(inp.budget>=1000)){err.textContent="Enter a total budget of at least ₹1,000.";return}
   err.textContent="";
-  state.inp=inp;state.budget=inp.budget;state.ai=null;state.fit=null;
+  state.inp=inp;state.base=inp.budget;state.budget=inp.budget;state.ai=null;state.fit=null;state.view="auto";
   render();
   $("#out").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth",block:"start"});
   if(sampleFn)runAI(false);
 });
 
+const FIN=["cac","be","reach"];
+function resolve(C){
+  const fin=C.filter(c=>FIN.includes(c.id));if(!fin.length)return null;
+  const choices=[],budgets=[];let acq=null;
+  fin.forEach(c=>{
+    if(c.id==="cac"){if(c.b2ok!==false){budgets.push(c.b2);acq=c.b2}else choices.push(c.choose)}
+    if(c.id==="be")budgets.push(c.beBudget);
+    if(c.id==="reach")choices.push(c.choose);
+  });
+  if(choices.length)return{ok:false,choices,fin};
+  const b=Math.floor(Math.min(...budgets)/100)*100;
+  return{ok:true,budget:b,acq:acq&&fin.length===1?Math.floor(acq/100)*100:null,fin};
+}
+function runAt(b){const inp=state.inp;state.budget=b;state.al=allocate(inp,b);state.eco=economics(inp,b);state.ph=phases(inp,b,state.al.rows);state.kb=kbFor(inp);state.fn=funnel(inp,b,state.eco)}
 function compute(){
-  const {inp,budget}=state;
-  state.al=allocate(inp,budget);state.eco=economics(inp,budget);state.ph=phases(inp,budget,state.al.rows);state.kb=kbFor(inp);state.fn=funnel(inp,budget,state.eco);
+  const base=state.base||state.inp.budget;state.fit=null;runAt(base);
+  const C0=conflicts();state.origConf=C0;
+  const acq0=state.al.rows.filter(r=>r.acq).reduce((s,r)=>s+r.amt,0);
+  state.orig={budget:base,rows:state.al.rows.map(r=>({c:r.c,amt:r.amt,pct:r.pct})),units:state.fn.units,cpu:state.fn.costPerUnit,acq:acq0,reqRoas:state.eco&&state.eco.reqRoas,lim:state.eco&&state.eco.maxCac};
+  const R=resolve(C0);state.reso=R;
+  if(!R){state.status="ok";return}
+  if(!R.ok){state.status="unresolved";return}
+  if(state.view==="original"){state.status="original";return}
+  if(state.view==="reassign"&&R.acq){state.fit={mode:"reassign",acq:R.acq};runAt(base)}else{state.fit={mode:"cut",prev:base};runAt(R.budget)}
+  const after=conflicts().filter(c=>FIN.includes(c.id));
+  if(after.length){state.status="unresolved";R.choices=after.map(c=>c.choose||c.t)}else state.status="revised";
 }
 
 function render(){
@@ -1535,7 +1598,8 @@ function render(){
   <section class="panel" id="pf-sec" hidden></section>
   <section class="panel" id="rd-sec"></section>
   <section class="panel" id="alloc-sec">
-    <h2>Where to invest</h2>
+    <h2 id="alloc-h">Where to invest</h2>
+    <div id="stat-banner"></div>
     <div class="total"><span class="big" id="tot">${inrShort(budget)}</span><span class="muted" id="permo">${inr(al.monthly)} a month for ${inp.months} month${inp.months>1?"s":""}</span></div>
     <div class="chips"><span class="chip">${esc(GOALS[inp.goal])}</span><span class="chip">${esc(MODELS[inp.model])}</span><span class="chip">${esc(STAGES[inp.stage])}</span><span class="chip">${esc(REACH[inp.reach])}</span><span class="chip">${esc(POS[inp.pos])}</span><span class="chip">${esc(JOURNEYS[inp.journey].n)}</span>${inp.geo?`<span class="chip">${esc(inp.geo)}</span>`:""}</div>
     <div class="rupeebar" id="bar" role="img" aria-label="Budget split by channel"></div>
@@ -1560,14 +1624,17 @@ function render(){
   <section class="panel" id="sv-sec"></section>
   <section class="panel"><div class="bar-actions"><button type="button" id="pdf" style="background:var(--accent);border-color:var(--accent);color:#231800">Download PDF</button><button type="button" id="dl">Download plan (.md)</button><button type="button" id="cp">Copy plan as text</button><span class="small muted" id="cpo" role="status"></span></div></section>`;
   paintAlloc();paintRest();renderAIShell();
-  $("#wi").addEventListener("input",e=>{state.fit=null;const p=+e.target.value;$("#wio").textContent=p+"%";state.budget=Math.round(state.inp.budget*p/100/100)*100;compute();paintAlloc();paintRest();if(state.ai)paintAI()});
+  $("#wi").addEventListener("input",e=>{const p=+e.target.value;$("#wio").textContent=p+"%";state.base=Math.round(state.inp.budget*p/100/100)*100;compute();paintAlloc();paintRest();if(state.ai)paintAI()});
   $("#dl").addEventListener("click",download);
   $("#pdf").addEventListener("click",downloadPDF);
   $("#cp").addEventListener("click",()=>{const t=toMarkdown();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>$("#cpo").textContent="Copied").catch(()=>$("#cpo").textContent="Copy isn't available here; use download instead.")});
 }
 
+function allocTitle(){return{revised:"Where to invest: recommended revised plan",original:"Where to invest: original plan (not financially feasible)",unresolved:"Where to invest: not final",ok:"Where to invest"}[state.status]||"Where to invest"}
 function paintAlloc(){
   const {al,budget,inp}=state;
+  $("#alloc-h").textContent=allocTitle();const ST=statusText();
+  $("#stat-banner").innerHTML=ST?(state.status==="revised"?`<div class="move" style="margin:0 0 10px">${esc(ST)}<div class="bar-actions" style="margin-top:8px">${viewButtons()}</div></div>`:`<div class="checks" style="margin:0 0 10px"><div class="warn">${esc(ST)}<div class="bar-actions" style="margin-top:8px">${viewButtons()}</div></div></div>`):"";bindViews($("#stat-banner"));
   $("#tot").textContent=inrShort(budget);$("#permo").textContent=inr(al.monthly)+" a month for "+inp.months+" month"+(inp.months>1?"s":"");
   $("#bar").innerHTML=al.rows.map(r=>`<span title="${esc(CH[r.c].n)} ${r.pct}%" style="flex-grow:${r.share};background:${CH[r.c].c}"></span>`).join("");
   $("#rows").innerHTML=al.rows.map((r,i)=>{const ch=CH[r.c],ak=actsFor(r.c,inp);return`<tr><td><span class="sw" style="background:${ch.c}"></span><button type="button" class="rowbtn" aria-expanded="false" aria-controls="a${i}" data-i="${i}">${esc(ch.n)}</button><span class="whyl">${esc(whyText(r))}${decideRule(r)?`<br><b>${esc(decideRule(r))}</b>`:""}</span>
@@ -1581,7 +1648,7 @@ function ecoRows(inp,eco){
   if(eco.beRoas)R.push(["Break-even return",eco.beRoas.toFixed(2)+"×","Revenue per ₹1 of marketing needed to cover product cost (1 ÷ margin). Applies to paid-media ROAS and blended return alike"]);
   if(eco.contrib)R.push(["Contribution per "+(inp.journey==="subscription"?"month":"sale"),inr(eco.contrib),"Value × margin"]);
   if(eco.clv)R.push(["Customer lifetime value",inr(eco.clv),"Contribution × lifetime"]);
-  if(eco.maxCac)R.push(["Most you can pay per customer",inr(eco.maxCac),eco.maxCacSrc==="user"?"You entered this":"Lifetime value ÷ 3, the 3:1 rule"]);
+  if(eco.maxCac)R.push(["Target CAC (most you can pay per customer)",inr(eco.maxCac),eco.maxCacSrc==="user"?"You entered this":"Lifetime value ÷ 3, the 3:1 rule"]);
   if(eco.ordersNeeded)R.push([J.stages[J.rev]+" needed",Math.ceil(eco.ordersNeeded).toLocaleString("en-IN"),"Revenue target ÷ revenue per customer in the period"]);
   if(eco.reqRoas)R.push(["Blended return your target needs",eco.reqRoas.toFixed(2)+"×","Revenue target ÷ total marketing budget (not platform ROAS)"]);
   const paid=state.al?state.al.rows.filter(r=>PAID.includes(r.c)).reduce((s,r)=>s+r.amt,0):0;
@@ -1592,18 +1659,13 @@ function paintRest(){
   const {eco,ph,inp,al,budget,fn}=state;
   // summary
   const sm=execSummary(inp,al,eco,fn);
-  const CF=conflicts(),NC=notChecked();
-  $("#cf-sec").innerHTML=`<h2>Strategic conflicts and decisions</h2>`+(CF.length?CF.map((c,i)=>`<div class="cf-card"><h3>⚠ ${esc(c.t)}</h3><div class="lbl">Evidence</div><ul style="margin:2px 0">${c.ev.map(x=>`<li>${esc(x)}</li>`).join("")}</ul><div class="lbl">Business impact</div><div>${esc(c.im)}</div><div class="lbl">Options</div><ol>${c.op.map(x=>`<li>${esc(x)}</li>`).join("")}</ol><div class="rec"><b>Recommended:</b> ${esc(c.rec)}</div>${c.id==="cac"?`<div class="bar-actions" style="margin-top:10px"><button type="button" class="copy" data-fit="cut" data-v="${Math.round(c.b2)}">Rebuild at ${esc(inr(c.b2))}</button><button type="button" class="copy" data-fit="reassign" data-v="${Math.round(c.b2)}">Keep ${esc(inr(state.budget))}, cap acquisition at ${esc(inr(c.b2))}</button></div>`:""}</div>`).join(""):`<div class="okline">No conflicts found between budget, economics, targets${state.inp.perf&&state.inp.perf.length?", current performance":""} and channels.</div>`)+(NC.length?`<p class="small muted" style="margin-bottom:0">Not checked yet: ${esc(NC.join("; "))}.</p>`:"");
-  const FN=fitNote();if(FN)$("#cf-sec").insertAdjacentHTML("afterbegin",`<div class="move" style="margin:0 0 12px"><b>Plan fitted to your limit.</b> ${esc(FN)} <button type="button" class="copy" id="unfit">Undo</button></div>`);
-  $("#cf-sec").querySelectorAll("[data-fit]").forEach(b=>b.addEventListener("click",()=>{const v=+b.dataset.v;
-    if(b.dataset.fit==="cut"){state.fit={mode:"cut",prev:state.budget};state.budget=v}else{state.fit={mode:"reassign",acq:v}}
-    compute();compute();paintAlloc();paintRest();$("#cf-sec").scrollIntoView({block:"start"})}));
-  const ub=$("#unfit");if(ub)ub.addEventListener("click",()=>{if(state.fit&&state.fit.mode==="cut")state.budget=state.fit.prev||state.inp.budget;state.fit=null;compute();compute();paintAlloc();paintRest()});
+  const NC=notChecked();$("#cf-sec").innerHTML=conflictsHTML()+(NC.length?`<p class="small muted" style="margin-bottom:0">Not checked yet: ${esc(NC.join("; "))}.</p>`:"");
+  bindViews($("#cf-sec"));
   const PA=perfAnalysis(),pf=$("#pf-sec");
   if(PA){pf.hidden=false;const L=perfLabels(state.inp.journey);
     const D=dq();
-    pf.innerHTML=`<h2>Your current performance</h2><p class="small muted" style="margin-top:0">What you entered in step 4, and what the plan does with each channel.</p>${D.noCust||D.partial?`<div class="checks"><div class="warn"><b>Data quality:</b> ${D.noCust?"Clients by channel weren't provided":"Clients are missing for some channels"}, so channel quality can't be compared reliably. The plan uses enquiry volume and cost per enquiry as directional evidence, not proof of lower cost per client. Add clients won per channel in step 4 to make these decisions firm.</div></div>`:""}<div class="tablewrap"><table class="alloc"><thead><tr><th>Channel</th><th class="num">Spend now</th><th class="num">${esc(L[0].replace(" a month",""))}</th><th class="num">Share</th><th class="num">Cost each</th><th class="num">Per customer</th><th class="num">Return</th><th>Verdict</th><th class="num">Plan a month</th></tr></thead><tbody>${PA.rows.map(x=>`<tr><td>${esc(x.nm)}</td><td class="num">${inr(x.p.spend)}</td><td class="num">${x.p.res||"—"}</td><td class="num">${PA.T.res?(x.p.res/PA.T.res*100).toFixed(1)+"%":"—"}</td><td class="num">${x.cpr?inr(x.cpr):"—"}</td><td class="num">${x.cpc?inr(x.cpc):"—"}</td><td class="num">${x.ret?x.ret.toFixed(2)+"×"+(PAID.includes(x.c)?" ROAS":""):"—"}</td><td><b>${esc(x.v)}</b></td><td class="num">${x.plan?inr(x.plan)+(x.shared?"*":""):"—"}</td></tr>`).join("")}</tbody></table></div>
-    <p class="small muted">${PA.T.blended?`Blended return now: ${PA.T.blended.toFixed(2)}× (all spend). `:""}${PA.T.paidRoas?`Paid-media ROAS now: ${PA.T.paidRoas.toFixed(2)}× (paid channels only). `:""}${PA.T.cpc?`Cost per customer now: ${inr(PA.T.cpc)}. `:""}${PA.rows.some(x=>x.shared)?"*Referrals and CRM share one plan line.":""}</p>`}
+    pf.innerHTML=`<h2>Your current performance</h2><p class="small muted" style="margin-top:0">What you entered in step 4, and what the plan does with each channel.</p>${D.noCust||D.partial?`<div class="checks"><div class="warn"><b>Data quality:</b> ${D.noCust?"Clients by channel weren't provided":"Clients are missing for some channels"}, so channel quality can't be compared reliably. The plan uses enquiry volume and cost per enquiry as directional evidence, not proof of lower cost per client. Add clients won per channel in step 4 to make these decisions firm.</div></div>`:""}<div class="tablewrap"><table class="alloc"><thead><tr><th>Channel</th><th class="num">Spend now</th><th class="num">${esc(L[0].replace(" a month",""))}</th><th class="num">Share</th><th class="num">Cost each</th><th class="num">Actual CAC</th><th class="num">Return</th><th>Verdict</th><th class="num">Plan a month</th></tr></thead><tbody>${PA.rows.map(x=>`<tr><td>${esc(x.nm)}</td><td class="num">${inr(x.p.spend)}</td><td class="num">${x.p.res||"—"}</td><td class="num">${PA.T.res?(x.p.res/PA.T.res*100).toFixed(1)+"%":"—"}</td><td class="num">${x.cpr?inr(x.cpr):"—"}</td><td class="num">${x.cpc?inr(x.cpc):"—"}</td><td class="num">${x.ret?x.ret.toFixed(2)+"×"+(PAID.includes(x.c)?" ROAS":""):"—"}</td><td><b>${esc(x.v)}</b></td><td class="num">${x.plan?inr(x.plan)+(x.shared?"*":""):"—"}</td></tr>`).join("")}</tbody></table></div>
+    <p class="small muted">${PA.T.blended?`Blended return now: ${PA.T.blended.toFixed(2)}× (all spend). `:""}${PA.T.paidRoas?`Paid-media ROAS now: ${PA.T.paidRoas.toFixed(2)}× (paid channels only). `:""}${PA.T.cpc?`Actual CAC now: ${inr(PA.T.cpc)}. `:""}${PA.rows.some(x=>x.shared)?"*Referrals and CRM share one plan line.":""}</p>`}
   else{pf.hidden=true;pf.innerHTML=""}
   $("#sum-sec").innerHTML=`<h2>Executive summary</h2><div class="sum">${sm.map(x=>`<div class="k">${esc(x[0])}</div><div>${esc(x[1])}</div>`).join("")}</div>`;
   // funnel
@@ -1612,16 +1674,16 @@ function paintRest(){
     const max=fn.st[0].c;
     fs.innerHTML=`<h2>Funnel model</h2><p class="small muted" style="margin-top:0">Worked backwards from your ${esc(fn.basis)}. Rates marked <span style="color:var(--neg)">assumed</span> are planning placeholders; replace them with your own figures.</p>
     <div class="fun">${fn.st.map((x,i)=>`<div class="st"><span>${esc(x.n)}</span><div class="bar" style="width:${Math.max(1,Math.sqrt(x.c/max)*100)}%"></div><span class="num">${Math.round(x.c).toLocaleString("en-IN")}</span></div>${x.rate?`<div class="rate">↓ ${(x.rate.v*100).toFixed(x.rate.v*100<1?2:1).replace(/\.0+$/,"")}% ${x.rate.src==="user"?"your rate":x.rate.src==="data"?"from your current results":'<span class="as">assumed</span>'}</div>`:""}`).join("")}</div>
-    <div class="cols" style="margin-top:14px"><div class="stat"><div class="l">Budget per ${esc(fn.J.stages[fn.J.rev].toLowerCase().replace(/s$/,""))}</div><div class="v">${inr(fn.costPerUnit)}</div><div class="l">${fn.basis==="revenue target"&&eco&&eco.maxCac?(fn.costPerUnit<=eco.maxCac?"Within":"Above")+" your limit of "+inr(eco.maxCac):"Total budget ÷ "+esc(fn.J.stages[fn.J.rev].toLowerCase())}</div></div>
+    <div class="cols" style="margin-top:14px"><div class="stat"><div class="l">Implied CAC (${esc(fn.cpuLabel)} ÷ target ${esc(fn.J.stages[fn.J.rev].toLowerCase())})</div><div class="v">${inr(fn.costPerUnit)}</div><div class="l">${fn.basis==="revenue target"&&eco&&eco.maxCac?(fn.costPerUnit<=eco.maxCac?"Within":"Above")+" your "+inr(eco.maxCac)+" target CAC":"Total budget ÷ "+esc(fn.J.stages[fn.J.rev].toLowerCase())}</div></div>
     <div class="stat"><div class="l">Budget per 1,000 people reached</div><div class="v">${inr(fn.costPer1000)}</div><div class="l">If your ad platforms charge more than this per 1,000 people, paid media alone won't reach the numbers above</div></div></div>`;
   }else{
     const J=fn.J;
-    fs.innerHTML=`<h2>Funnel model</h2><p class="muted" style="margin:0 0 10px">Your funnel: ${J.stages.map(esc).join(" → ")}.</p><p class="small muted">Add a revenue target with order value, or the most you'd pay per customer, in step 3 to see how many people you need at each stage.</p>`;
+    fs.innerHTML=`<h2>Funnel model</h2><p class="muted" style="margin:0 0 10px">Your funnel: ${J.stages.map(esc).join(" → ")}.</p><p class="small muted">Add a revenue target with order value, or your target CAC, in step 3 to see how many people you need at each stage.</p>`;
   }
   // economics
   const es=$("#eco-sec");const er=ecoRows(inp,eco);
   es.innerHTML=er.length?`<h2>Your spending limits</h2><div class="cols">${er.map(x=>`<div class="stat"><div class="l">${esc(x[0])}</div><div class="v">${x[1]}</div><div class="l">${esc(x[2])}</div></div>`).join("")}</div><p class="small muted">Calculated only from the numbers you entered. Use break-even ROAS and the most you can pay per customer as the pass/fail line for every channel.</p>`
-   :`<h2>Your spending limits</h2><p class="muted">Add order value and gross margin in step 3 to see break-even ROAS, lifetime value and the most you can pay per customer.</p>`;
+   :`<h2>Your spending limits</h2><p class="muted">Add order value and gross margin in step 3 to see break-even return, lifetime value and target CAC.</p>`;
   $("#ph").innerHTML=ph.map((p,i)=>`<div class="phase ${i===0?"on":""}"><h3>${esc(p.t)}</h3><div class="when">${esc(p.when)} · about ${inr(p.amt)}</div><ul>${p.items.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`).join("");
   $("#nots").innerHTML=whatNot(inp,al,eco).map(t=>`<li>${esc(t)}</li>`).join("");
   $("#chk").innerHTML=checks(inp,al,eco).map(c=>`<div class="${c[0]}">${esc(c[1])}</div>`).join("");
@@ -1729,15 +1791,20 @@ function paintAI(){
 function toMarkdown(){
   const {inp,al,eco,ph,ai,budget}=state;const L=[];
   const rdm=readiness();
-  L.push(`# Marketing plan: ${inp.name}`,``,`## Executive summary`,``,...execSummary(inp,al,eco,state.fn).map(x=>`- **${x[0]}:** ${x[1]}`),``,...(()=>{const C=conflicts(),O=[`## Strategic conflicts and decisions`,``,...(fitNote()?[`**Plan fitted to your limit.** ${fitNote()}`,``]:[])];if(!C.length)O.push("No conflicts found between budget, economics, targets and channels.");C.forEach(c=>{O.push(`### ⚠ ${c.t}`,``,`**Evidence:**`,...c.ev.map(x=>`- ${x}`),``,`**Business impact:** ${c.im}`,``,`**Options:**`,...c.op.map((x,i)=>`${i+1}. ${x}`),``,`**Recommended:** ${c.rec}`,``)});const nc=notChecked();if(nc.length)O.push(`Not checked yet: ${nc.join("; ")}.`);O.push("");return O})(),
+  L.push(`# Marketing plan: ${inp.name}`,``,`## Executive summary`,``,...execSummary(inp,al,eco,state.fn).map(x=>`- **${x[0]}:** ${x[1]}`),``,...(()=>{const st=state.status,O=[`## Strategic conflicts and decisions`,``];const ST=statusText();if(ST)O.push(`**${ST}**`,``);
+    if(st==="revised"||st==="original")O.push(`| | Original plan | Recommended revised plan |`,`|---|---|---|`,...cmpRows().map(r=>`| ${r[0]} | ${r[1]} | ${r[2]} |`),``);
+    const C=conflictList();
+    if(!C.length)O.push("No conflicts found between budget, economics, targets and channels.");
+    C.forEach(c=>{O.push(`### ⚠ ${c.t}`,``,...(conflictStatus(c)?[`*${conflictStatus(c)}*`,``]:[]),`**Evidence${FIN.includes(c.id)?" (original plan)":""}:**`,...c.ev.map(x=>`- ${x}`),``,`**Business impact:** ${c.im}`,``,`**Options:**`,...c.op.map((x,i)=>`${i+1}. ${x}`),``,`**Recommended:** ${c.rec}`,``)});
+    const nc=notChecked();if(nc.length)O.push(`Not checked yet: ${nc.join("; ")}.`);O.push("");return O})(),
   ...(()=>{const P=perfAnalysis();if(!P)return[];return[`## Your current performance`,``,...(dq().noCust||dq().partial?[`> **Data quality:** clients by channel are incomplete, so channel quality can't be compared reliably; enquiry volume and cost per enquiry are directional evidence only.`,``]:[]),`| Channel | Spend now | Results | Share | Cost each | Per customer | Return | Verdict | Plan/month |`,`|---|---|---|---|---|---|---|---|---|`,...P.rows.map(x=>`| ${x.nm} | ${inr(x.p.spend)} | ${x.p.res||"—"} | ${P.T.res?(x.p.res/P.T.res*100).toFixed(1)+"%":"—"} | ${x.cpr?inr(x.cpr):"—"} | ${x.cpc?inr(x.cpc):"—"} | ${x.ret?x.ret.toFixed(2)+"×":"—"} | ${x.v} | ${x.plan?inr(x.plan):"—"} |`),``,`${P.T.blended?`Blended return now: ${P.T.blended.toFixed(2)}×. `:""}${P.T.paidRoas?`Paid-media ROAS now: ${P.T.paidRoas.toFixed(2)}×. `:""}`,``]})(),
-  `## Readiness check: ${rdm.overall===null?"not assessed":rdm.overall+"% of answered items"} (input completeness ${rdm.completeness}%)`,``,...rdm.dims.map(d=>`- ${d.n}: ${d.sc===null?"not assessed":d.sc+"%"}`),``,...(rdm.weakest&&rdm.weakest.sc<100?[`Weakest area: ${rdm.weakest.n}. ${rdm.weakest.tip}`,``]:[]),`${inp.industry} · ${MODELS[inp.model]} · ${STAGES[inp.stage]} · ${REACH[inp.reach]} · ${POS[inp.pos]} · Goal: ${GOALS[inp.goal]}`,`Budget: ${inr(budget)} over ${inp.months} month(s) (${inr(al.monthly)} a month)`,``,`## Budget allocation`,``,`| Channel | Share | Total | Per month |`,`|---|---|---|---|`);
+  `## Readiness check: ${rdm.overall===null?"not assessed":rdm.overall+"% of answered items"} (input completeness ${rdm.completeness}%)`,``,...rdm.dims.map(d=>`- ${d.n}: ${d.sc===null?"not assessed":d.sc+"%"}`),``,...(rdm.weakest&&rdm.weakest.sc<100?[`Weakest area: ${rdm.weakest.n}. ${rdm.weakest.tip}`,``]:[]),`${inp.industry} · ${MODELS[inp.model]} · ${STAGES[inp.stage]} · ${REACH[inp.reach]} · ${POS[inp.pos]} · Goal: ${GOALS[inp.goal]}`,`Budget: ${inr(budget)} over ${inp.months} month(s) (${inr(al.monthly)} a month)`,``,`## ${{revised:"Recommended revised plan: budget allocation",original:"Original plan (not financially feasible): budget allocation",unresolved:"Budget allocation (not final)"}[state.status]||"Budget allocation"}`,``,`| Channel | Share | Total | Per month |`,`|---|---|---|---|`);
   al.rows.forEach(r=>L.push(`| ${CH[r.c].n} | ${r.pct}% | ${inr(r.amt)} | ${inr(r.mo)} |`));
   L.push(``,`### Why each channel`);al.rows.forEach(r=>L.push(`- ${CH[r.c].n}: ${whyText(r)}${decideRule(r)?" "+decideRule(r):""}`));
   L.push(``,`## Activities by channel`);
   al.rows.forEach(r=>{const ak=actsFor(r.c,inp);L.push(``,`### ${CH[r.c].n} (${inr(r.amt)})`);ak.a.forEach(a=>L.push(`- ${a[0]}: ${inr(r.amt*a[1]/100)}`));L.push(`- Judge on: ${ak.k.join(", ")}`)});
   const fnm=state.fn;
-  if(fnm.units){L.push(``,`## Funnel model`,``,`Worked backwards from your ${fnm.basis}.`,``);fnm.st.forEach(x=>{L.push(`- ${x.n}: ${Math.round(x.c).toLocaleString("en-IN")}`);if(x.rate)L.push(`  - ↓ ${(x.rate.v*100).toFixed(2).replace(/\.?0+$/,"")}% (${x.rate.src==="user"?"your rate":x.rate.src==="data"?"from your results":"assumed"})`)});L.push(`- Budget per customer: ${inr(fnm.costPerUnit)}`,`- Budget per 1,000 people reached: ${inr(fnm.costPer1000)}`)}
+  if(fnm.units){L.push(``,`## Funnel model`,``,`Worked backwards from your ${fnm.basis}.`,``);fnm.st.forEach(x=>{L.push(`- ${x.n}: ${Math.round(x.c).toLocaleString("en-IN")}`);if(x.rate)L.push(`  - ↓ ${(x.rate.v*100).toFixed(2).replace(/\.?0+$/,"")}% (${x.rate.src==="user"?"your rate":x.rate.src==="data"?"from your results":"assumed"})`)});L.push(`- Implied CAC: ${inr(fnm.costPerUnit)}`,`- Budget per 1,000 people reached: ${inr(fnm.costPer1000)}`)}
   const erm=ecoRows(inp,eco);if(erm.length){L.push(``,`## Spending limits`);erm.forEach(x=>L.push(`- ${x[0]}: ${x[1]} (${x[2]})`))}
   const scm=scenarios();if(scm){L.push(``,`## Scenarios`,``,`Planning scenarios, not forecasts: same budget and reach, conversion 30% worse or better than planned.`,``,`| Scenario | Assumption | Customers | Revenue | Budget per customer | Blended return |`,`|---|---|---|---|---|---|`);scm.forEach(x=>L.push(`| ${x.n} | ${x.a} | ${x.u} | ${x.rev!=null?inr(x.rev):"—"} | ${x.cpu?inr(x.cpu):"—"} | ${x.roas!=null?x.roas.toFixed(2):"—"} |`))}
   L.push(``,`## Roadmap`);ph.forEach(p=>{L.push(``,`### ${p.t} (${p.when}, about ${inr(p.amt)})`);p.items.forEach(t=>L.push(`- ${t}`))});
